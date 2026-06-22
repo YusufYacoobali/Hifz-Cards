@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Amiri+Quran&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Plus Jakarta Sans',sans-serif;-webkit-font-smoothing:antialiased}
+  .scr::-webkit-scrollbar{width:0;display:none}
+  .scr{scrollbar-width:none}
+</style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;gap:36px;background:radial-gradient(130% 130% at 50% -10%,#f0ebe1,#e2dccf);padding:40px 40px 56px;font-family:'Plus Jakarta Sans',sans-serif">
+
+  <!-- ============ SCREEN JUMPER ============ -->
+  <div style="flex:none;display:flex;flex-direction:column;gap:6px;width:188px">
+    <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#9a948a;font-weight:700;margin-bottom:6px;padding-left:4px">Hifz Cards · Demo</div>
+    <button onClick="{{ goOnb }}" style="text-align:left;border:none;background:#fff;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:600;color:#4a473e;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(40,45,40,.05)">1 · Onboarding</button>
+    <button onClick="{{ goHome }}" style="text-align:left;border:none;background:#fff;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:600;color:#4a473e;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(40,45,40,.05)">2 · Home Dashboard</button>
+    <button onClick="{{ goNotif }}" style="text-align:left;border:none;background:#fff;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:600;color:#4a473e;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(40,45,40,.05)">3 · Notification Settings</button>
+    <button onClick="{{ goSession }}" style="text-align:left;border:none;background:#fff;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:600;color:#4a473e;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(40,45,40,.05)">4 · Card Session</button>
+    <button onClick="{{ goProgress }}" style="text-align:left;border:none;background:#fff;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:600;color:#4a473e;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(40,45,40,.05)">5 · Progress</button>
+    <button onClick="{{ goBoard }}" style="text-align:left;border:none;background:#fff;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:600;color:#4a473e;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(40,45,40,.05)">6 · Leaderboard</button>
+    <button onClick="{{ goRecap }}" style="text-align:left;border:none;background:#fff;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:600;color:#4a473e;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(40,45,40,.05)">7 · Weekly Recap</button>
+    <button onClick="{{ goProfile }}" style="text-align:left;border:none;background:#fff;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:600;color:#4a473e;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(40,45,40,.05)">8 · Profile / Goals</button>
+    <div style="font-size:11px;color:#a39d92;line-height:1.5;margin-top:10px;padding-left:4px">Tip: in the card session, drag a card to skip, tap to reveal, or mark Easy / Weak / Failed.</div>
+  </div>
+
+  <!-- ============ PHONE ============ -->
+  <div style="flex:none;width:392px;height:846px;background:#08110e;border-radius:58px;padding:12px;box-shadow:0 50px 110px rgba(30,40,34,.34),inset 0 0 0 2px #29332e">
+    <div style="width:100%;height:100%;background:#f6f2ea;border-radius:46px;overflow:hidden;position:relative">
+
+      <!-- dynamic island -->
+      <div style="position:absolute;top:13px;left:50%;transform:translateX(-50%);width:116px;height:32px;background:#08110e;border-radius:18px;z-index:90"></div>
+
+      <!-- ==================== ONBOARDING ==================== -->
+      <sc-if value="{{ isOnb }}" hint-placeholder-val="{{ true }}">
+      <div class="scr" style="position:absolute;inset:0;background:#f6f2ea;display:flex;flex-direction:column">
+        <div style="height:56px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 6px;font-size:14px;font-weight:700;color:#3a382f">
+          <span>9:41</span><span style="font-size:12px;letter-spacing:1px">5G ▮▮▮</span>
+        </div>
+        <!-- progress dots -->
+        <div style="display:flex;gap:6px;padding:14px 26px 0">
+          <div style="flex:1;height:4px;border-radius:3px;background:{{ ob0 }}"></div>
+          <div style="flex:1;height:4px;border-radius:3px;background:{{ ob1 }}"></div>
+          <div style="flex:1;height:4px;border-radius:3px;background:{{ ob2 }}"></div>
+          <div style="flex:1;height:4px;border-radius:3px;background:{{ ob3 }}"></div>
+          <div style="flex:1;height:4px;border-radius:3px;background:{{ ob4 }}"></div>
+        </div>
+
+        <div class="scr" style="flex:1;overflow-y:auto;padding:24px 26px 0">
+
+          <!-- step 0: goal -->
+          <sc-if value="{{ o0 }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <div style="width:54px;height:54px;border-radius:16px;background:#0f3b30;display:flex;align-items:center;justify-content:center;font-family:'Amiri Quran',serif;font-size:26px;color:#e9d9a8">ﷺ</div>
+            <div style="font-size:26px;font-weight:800;color:#2b2a22;letter-spacing:-.02em;margin-top:20px;line-height:1.2">What are you<br>working on?</div>
+            <div style="font-size:14px;color:#8a8475;margin-top:8px;line-height:1.5">We will shape your daily prompts around this goal. You can change it anytime.</div>
+            <div style="display:flex;flex-direction:column;gap:12px;margin-top:24px">
+              <button onClick="{{ pickGoalNew }}" style="display:flex;align-items:center;gap:14px;text-align:left;border:1.5px solid #ece6da;background:#fff;border-radius:18px;padding:16px;font-family:inherit;cursor:pointer;{{ goalNew }}">
+                <span style="font-size:22px">🌱</span><span><span style="display:block;font-size:15px;font-weight:700;color:#3a382f">New memorisation</span><span style="display:block;font-size:12.5px;color:#8a8475;margin-top:1px">Commit fresh āyāt to memory</span></span>
+              </button>
+              <button onClick="{{ pickGoalRev }}" style="display:flex;align-items:center;gap:14px;text-align:left;border:1.5px solid #ece6da;background:#fff;border-radius:18px;padding:16px;font-family:inherit;cursor:pointer;{{ goalRev }}">
+                <span style="font-size:22px">🔁</span><span><span style="display:block;font-size:15px;font-weight:700;color:#3a382f">Strengthen revision</span><span style="display:block;font-size:12.5px;color:#8a8475;margin-top:1px">Keep what you know solid</span></span>
+              </button>
+              <button onClick="{{ pickGoalBoth }}" style="display:flex;align-items:center;gap:14px;text-align:left;border:1.5px solid #ece6da;background:#fff;border-radius:18px;padding:16px;font-family:inherit;cursor:pointer;{{ goalBoth }}">
+                <span style="font-size:22px">⚖️</span><span><span style="display:block;font-size:15px;font-weight:700;color:#3a382f">Both, in balance</span><span style="display:block;font-size:12.5px;color:#8a8475;margin-top:1px">New āyāt plus daily revision</span></span>
+              </button>
+            </div>
+          </div>
+          </sc-if>
+
+          <!-- step 1: range -->
+          <sc-if value="{{ o1 }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <div style="font-size:26px;font-weight:800;color:#2b2a22;letter-spacing:-.02em;line-height:1.2">Choose your<br>range</div>
+            <div style="font-size:14px;color:#8a8475;margin-top:8px;line-height:1.5">Pick how you want to select it.</div>
+            <div style="display:flex;gap:8px;margin-top:20px">
+              <button onClick="{{ rtSurahFn }}" style="flex:1;border:1.5px solid #ece6da;background:#fff;border-radius:13px;padding:11px 0;font-size:13px;font-weight:700;color:#6b675c;font-family:inherit;cursor:pointer;{{ rtSurah }}">Sūrah</button>
+              <button onClick="{{ rtJuzFn }}" style="flex:1;border:1.5px solid #ece6da;background:#fff;border-radius:13px;padding:11px 0;font-size:13px;font-weight:700;color:#6b675c;font-family:inherit;cursor:pointer;{{ rtJuz }}">Juzʾ</button>
+              <button onClick="{{ rtPageFn }}" style="flex:1;border:1.5px solid #ece6da;background:#fff;border-radius:13px;padding:11px 0;font-size:13px;font-weight:700;color:#6b675c;font-family:inherit;cursor:pointer;{{ rtPage }}">Page</button>
+              <button onClick="{{ rtAyahFn }}" style="flex:1;border:1.5px solid #ece6da;background:#fff;border-radius:13px;padding:11px 0;font-size:13px;font-weight:700;color:#6b675c;font-family:inherit;cursor:pointer;{{ rtAyah }}">Āyah</button>
+            </div>
+
+            <div style="background:#fff;border-radius:20px;padding:18px;margin-top:16px;box-shadow:0 6px 20px rgba(40,45,40,.05)">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div><div style="font-size:11px;color:#a59a82;font-weight:700;text-transform:uppercase;letter-spacing:.08em">Sūrah</div><div style="font-size:18px;font-weight:800;color:#3a382f;margin-top:2px">67 · Al-Mulk</div></div>
+                <div style="font-family:'Amiri Quran',serif;direction:rtl;font-size:30px;color:#0f3b30">الملك</div>
+              </div>
+              <div style="height:1px;background:#f0ebe0;margin:16px 0"></div>
+              <div style="font-size:11px;color:#a59a82;font-weight:700;text-transform:uppercase;letter-spacing:.08em">Āyah range</div>
+              <div style="display:flex;align-items:center;gap:14px;margin-top:12px">
+                <div style="flex:1;display:flex;align-items:center;justify-content:space-between;border:1px solid #ece6da;border-radius:13px;padding:8px 12px">
+                  <button onClick="{{ decFrom }}" style="width:28px;height:28px;border:none;background:#f3efe6;border-radius:9px;font-size:17px;color:#4e8a76;cursor:pointer;font-family:inherit">−</button>
+                  <div style="text-align:center"><div style="font-size:18px;font-weight:800;color:#3a382f">{{ ayahFrom }}</div><div style="font-size:9.5px;color:#a59a82">from</div></div>
+                  <button onClick="{{ incFrom }}" style="width:28px;height:28px;border:none;background:#f3efe6;border-radius:9px;font-size:17px;color:#4e8a76;cursor:pointer;font-family:inherit">+</button>
+                </div>
+                <div style="color:#cbc4b6;font-weight:700">→</div>
+                <div style="flex:1;display:flex;align-items:center;justify-content:space-between;border:1px solid #ece6da;border-radius:13px;padding:8px 12px">
+                  <button onClick="{{ decTo }}" style="width:28px;height:28px;border:none;background:#f3efe6;border-radius:9px;font-size:17px;color:#4e8a76;cursor:pointer;font-family:inherit">−</button>
+                  <div style="text-align:center"><div style="font-size:18px;font-weight:800;color:#3a382f">{{ ayahTo }}</div><div style="font-size:9.5px;color:#a59a82">to</div></div>
+                  <button onClick="{{ incTo }}" style="width:28px;height:28px;border:none;background:#f3efe6;border-radius:9px;font-size:17px;color:#4e8a76;cursor:pointer;font-family:inherit">+</button>
+                </div>
+              </div>
+              <div style="margin-top:14px;background:#eef5f1;border-radius:12px;padding:10px 14px;font-size:12.5px;color:#2f5d4f;font-weight:600">{{ rangeCount }} āyāt selected · about {{ rangeDays }} days at your pace</div>
+            </div>
+
+            <div style="font-size:11px;color:#a59a82;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin:20px 0 10px">Daily order</div>
+            <div style="display:flex;gap:10px">
+              <button onClick="{{ ordSeqFn }}" style="flex:1;text-align:left;border:1.5px solid #ece6da;background:#fff;border-radius:14px;padding:13px;font-family:inherit;cursor:pointer;{{ ordSeq }}"><span style="display:block;font-size:14px;font-weight:700;color:#3a382f">Sequential</span><span style="display:block;font-size:11.5px;color:#8a8475;margin-top:1px">In mushaf order</span></button>
+              <button onClick="{{ ordDailyFn }}" style="flex:1;text-align:left;border:1.5px solid #ece6da;background:#fff;border-radius:14px;padding:13px;font-family:inherit;cursor:pointer;{{ ordDaily }}"><span style="display:block;font-size:14px;font-weight:700;color:#3a382f">Set per day</span><span style="display:block;font-size:11.5px;color:#8a8475;margin-top:1px">{{ perDay }} new āyāt / day</span></button>
+            </div>
+          </div>
+          </sc-if>
+
+          <!-- step 2: frequency -->
+          <sc-if value="{{ o2 }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <div style="font-size:26px;font-weight:800;color:#2b2a22;letter-spacing:-.02em;line-height:1.2">How often<br>should we nudge?</div>
+            <div style="font-size:14px;color:#8a8475;margin-top:8px;line-height:1.5">Each nudge sends an āyah and says <b style="color:#4e8a76">“Recite from here.”</b></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px">
+              <button onClick="{{ f15 }}" style="border:1.5px solid #ece6da;background:#fff;border-radius:16px;padding:18px 14px;text-align:left;font-family:inherit;cursor:pointer;{{ freq15 }}"><div style="font-size:19px;font-weight:800;color:#3a382f">15 min</div><div style="font-size:12px;color:#8a8475;margin-top:2px">Frequent recall</div></button>
+              <button onClick="{{ f30 }}" style="border:1.5px solid #ece6da;background:#fff;border-radius:16px;padding:18px 14px;text-align:left;font-family:inherit;cursor:pointer;{{ freq30 }}"><div style="font-size:19px;font-weight:800;color:#3a382f">30 min</div><div style="font-size:12px;color:#8a8475;margin-top:2px">Balanced rhythm</div></button>
+              <button onClick="{{ fhr }}" style="border:1.5px solid #ece6da;background:#fff;border-radius:16px;padding:18px 14px;text-align:left;font-family:inherit;cursor:pointer;{{ freqHour }}"><div style="font-size:19px;font-weight:800;color:#3a382f">Hourly</div><div style="font-size:12px;color:#8a8475;margin-top:2px">Gentle spacing</div></button>
+              <button onClick="{{ fcustom }}" style="border:1.5px solid #ece6da;background:#fff;border-radius:16px;padding:18px 14px;text-align:left;font-family:inherit;cursor:pointer;{{ freqCustom }}"><div style="font-size:19px;font-weight:800;color:#3a382f">Custom</div><div style="font-size:12px;color:#8a8475;margin-top:2px">Set your own</div></button>
+            </div>
+          </div>
+          </sc-if>
+
+          <!-- step 3: active hours -->
+          <sc-if value="{{ o3 }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <div style="font-size:26px;font-weight:800;color:#2b2a22;letter-spacing:-.02em;line-height:1.2">When are you<br>available?</div>
+            <div style="font-size:14px;color:#8a8475;margin-top:8px;line-height:1.5">No prompts outside these hours — rest is part of the journey.</div>
+            <div style="background:#fff;border-radius:20px;padding:20px;margin-top:22px;box-shadow:0 6px 20px rgba(40,45,40,.05)">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div style="text-align:center"><div style="font-size:11px;color:#a59a82;font-weight:700">FROM</div><div style="font-size:24px;font-weight:800;color:#3a382f;margin-top:2px">6:00<span style="font-size:13px;color:#a59a82"> am</span></div><div style="font-size:11px;color:#4e8a76;font-weight:700">after Fajr</div></div>
+                <div style="flex:1;margin:0 16px;height:4px;border-radius:3px;background:linear-gradient(90deg,#e9d9a8,#4e8a76)"></div>
+                <div style="text-align:center"><div style="font-size:11px;color:#a59a82;font-weight:700">UNTIL</div><div style="font-size:24px;font-weight:800;color:#3a382f;margin-top:2px">9:30<span style="font-size:13px;color:#a59a82"> pm</span></div><div style="font-size:11px;color:#4e8a76;font-weight:700">after ʿIshāʾ</div></div>
+              </div>
+            </div>
+            <div style="font-size:11px;color:#a59a82;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin:20px 0 10px">Active days</div>
+            <div style="display:flex;gap:7px">
+              <button onClick="{{ dMon }}" style="flex:1;aspect-ratio:1;border:1.5px solid #ece6da;background:#fff;border-radius:12px;font-size:12px;font-weight:700;color:#6b675c;font-family:inherit;cursor:pointer;{{ dayMon }}">M</button>
+              <button onClick="{{ dTue }}" style="flex:1;aspect-ratio:1;border:1.5px solid #ece6da;background:#fff;border-radius:12px;font-size:12px;font-weight:700;color:#6b675c;font-family:inherit;cursor:pointer;{{ dayTue }}">T</button>
+              <button onClick="{{ dWed }}" style="flex:1;aspect-ratio:1;border:1.5px solid #ece6da;background:#fff;border-radius:12px;font-size:12px;font-weight:700;color:#6b675c;font-family:inherit;cursor:pointer;{{ dayWed }}">W</button>
+              <button onClick="{{ dThu }}" style="flex:1;aspect-ratio:1;border:1.5px solid #ece6da;background:#fff;border-radius:12px;font-size:12px;font-weight:700;color:#6b675c;font-family:inherit;cursor:pointer;{{ dayThu }}">T</button>
+              <button onClick="{{ dFri }}" style="flex:1;aspect-ratio:1;border:1.5px solid #ece6da;background:#fff;border-radius:12px;font-size:12px;font-weight:700;color:#6b675c;font-family:inherit;cursor:pointer;{{ dayFri }}">F</button>
+              <button onClick="{{ dSat }}" style="flex:1;aspect-ratio:1;border:1.5px solid #ece6da;background:#fff;border-radius:12px;font-size:12px;font-weight:700;color:#6b675c;font-family:inherit;cursor:pointer;{{ daySat }}">S</button>
+              <button onClick="{{ dSun }}" style="flex:1;aspect-ratio:1;border:1.5px solid #ece6da;background:#fff;border-radius:12px;font-size:12px;font-weight:700;color:#6b675c;font-family:inherit;cursor:pointer;{{ daySun }}">S</button>
+            </div>
+          </div>
+          </sc-if>
+
+          <!-- step 4: friends -->
+          <sc-if value="{{ o4 }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <div style="font-size:26px;font-weight:800;color:#2b2a22;letter-spacing:-.02em;line-height:1.2">Memorise<br>together</div>
+            <div style="font-size:14px;color:#8a8475;margin-top:8px;line-height:1.5">Consistency is easier with company. Optional — you can skip.</div>
+            <button style="width:100%;display:flex;align-items:center;gap:14px;text-align:left;border:1.5px solid #ece6da;background:#fff;border-radius:18px;padding:16px;font-family:inherit;cursor:pointer;margin-top:22px">
+              <span style="width:40px;height:40px;border-radius:12px;background:#eef5f1;display:flex;align-items:center;justify-content:center;font-size:18px">👥</span>
+              <span style="flex:1"><span style="display:block;font-size:15px;font-weight:700;color:#3a382f">Add friends</span><span style="display:block;font-size:12.5px;color:#8a8475">Invite by username or contacts</span></span><span style="color:#cbc4b6">›</span>
+            </button>
+            <button style="width:100%;display:flex;align-items:center;gap:14px;text-align:left;border:1.5px solid #ece6da;background:#fff;border-radius:18px;padding:16px;font-family:inherit;cursor:pointer;margin-top:12px">
+              <span style="width:40px;height:40px;border-radius:12px;background:#fbf2e2;display:flex;align-items:center;justify-content:center;font-size:18px">🏫</span>
+              <span style="flex:1"><span style="display:block;font-size:15px;font-weight:700;color:#3a382f">Join a class or group</span><span style="display:block;font-size:12.5px;color:#8a8475">Enter a class code from your teacher</span></span><span style="color:#cbc4b6">›</span>
+            </button>
+            <div style="background:#0f3b30;border-radius:20px;padding:20px;margin-top:22px;color:#fff">
+              <div style="font-family:'Amiri Quran',serif;direction:rtl;font-size:22px;color:#e9d9a8;line-height:1.9;text-align:center">وَلَقَدْ يَسَّرْنَا ٱلْقُرْءَانَ لِلذِّكْرِ</div>
+              <div style="font-size:12px;color:#bcd8cf;text-align:center;margin-top:8px;line-height:1.5">“And We have certainly made the Qurʾān easy to remember.” — 54:17</div>
+            </div>
+          </div>
+          </sc-if>
+
+          <div style="height:24px"></div>
+        </div>
+
+        <!-- onboarding footer -->
+        <div style="padding:14px 26px;background:#f6f2ea;border-top:1px solid #ece6da;display:flex;align-items:center;gap:12px">
+          <button onClick="{{ obBack }}" style="width:52px;height:52px;border:1.5px solid #ddd6c8;background:#fff;border-radius:16px;font-size:20px;color:#8a8475;cursor:pointer;font-family:inherit">←</button>
+          <button onClick="{{ obNext }}" style="flex:1;height:52px;border:none;background:#0f3b30;color:#fff;border-radius:16px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">{{ obNextLabel }}</button>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ==================== HOME ==================== -->
+      <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+      <div class="scr" style="position:absolute;inset:0;bottom:78px;overflow-y:auto;background:#f6f2ea">
+        <!-- emerald header (from C) -->
+        <div style="background:linear-gradient(165deg,#11463a,#0c3128);padding:56px 24px 26px;border-radius:0 0 30px 30px;color:#fff">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;font-size:13px;font-weight:700"><span>9:41</span><span style="font-size:11px;letter-spacing:1px">5G ▮▮▮</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-top:18px">
+            <div>
+              <div style="font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:#8fc3b3;font-weight:700">As-salāmu ʿalaykum, Yusuf</div>
+              <div style="font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:#6fa593;font-weight:700;margin-top:12px">Currently memorising</div>
+              <div style="font-size:23px;font-weight:800;margin-top:3px;letter-spacing:-.01em">Sūrah Al-Mulk</div>
+              <div style="font-size:12.5px;color:#bcd8cf;margin-top:2px">Āyāt 12–22 · Juzʾ 29 · Page 563</div>
+            </div>
+            <div style="font-family:'Amiri Quran',serif;direction:rtl;font-size:34px;color:#e9d9a8;margin-top:24px">الملك</div>
+          </div>
+          <div style="margin-top:18px;height:9px;border-radius:6px;background:rgba(255,255,255,.16);overflow:hidden"><div style="width:72%;height:9px;border-radius:6px;background:linear-gradient(90deg,#e9d9a8,#f3e6bd)"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:11.5px;color:#bcd8cf;margin-top:8px"><span style="font-weight:700;color:#e9d9a8">72% memorised</span><span>11 of 22 āyāt secured</span></div>
+        </div>
+
+        <div style="padding:18px 20px 0">
+          <!-- stat row -->
+          <div style="display:flex;gap:12px">
+            <div style="flex:1;background:#fff;border-radius:18px;padding:14px;box-shadow:0 6px 18px rgba(40,45,40,.05)">
+              <div style="display:flex;align-items:center;gap:5px"><span style="font-size:15px">🔥</span><span style="font-size:22px;font-weight:800;color:#3a382f">14</span></div>
+              <div style="font-size:11.5px;color:#a59a82;font-weight:600;margin-top:2px">day streak</div>
+            </div>
+            <div style="flex:1;background:#fff;border-radius:18px;padding:14px;box-shadow:0 6px 18px rgba(40,45,40,.05)">
+              <div style="font-size:22px;font-weight:800;color:#3a382f">2:30<span style="font-size:12px;color:#a59a82;font-weight:600"> pm</span></div>
+              <div style="font-size:11.5px;color:#4e8a76;font-weight:700;margin-top:2px">next prompt · 48 min</div>
+            </div>
+          </div>
+
+          <!-- weak ayahs -->
+          <button onClick="{{ goProgress }}" style="width:100%;text-align:left;background:#fff;border:none;border-radius:18px;padding:16px;margin-top:12px;box-shadow:0 6px 18px rgba(40,45,40,.05);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="width:42px;height:42px;border-radius:13px;background:#fbf2e2;display:flex;align-items:center;justify-content:center;font-size:18px">⚠️</span>
+              <span><span style="display:block;font-size:14.5px;font-weight:700;color:#3a382f">6 weak āyāt to revise</span><span style="display:block;font-size:12px;color:#8a8475;margin-top:1px">Āyāt 14, 16, 17, 19, 20, 21</span></span>
+            </div><span style="color:#c8b582;font-size:18px">›</span>
+          </button>
+
+          <!-- weekly (from A) -->
+          <div style="background:#fff;border-radius:18px;padding:16px;margin-top:12px;box-shadow:0 6px 18px rgba(40,45,40,.05)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:13px">
+              <span style="font-size:13px;font-weight:700;color:#3a382f">This week</span>
+              <span style="font-size:12.5px;color:#4e8a76;font-weight:700">5 / 7 days</span>
+            </div>
+            <div style="display:flex;gap:5px">
+              <div style="flex:1;height:8px;border-radius:4px;background:#4e8a76"></div><div style="flex:1;height:8px;border-radius:4px;background:#4e8a76"></div><div style="flex:1;height:8px;border-radius:4px;background:#4e8a76"></div><div style="flex:1;height:8px;border-radius:4px;background:#4e8a76"></div><div style="flex:1;height:8px;border-radius:4px;background:#4e8a76"></div><div style="flex:1;height:8px;border-radius:4px;background:#ece6da"></div><div style="flex:1;height:8px;border-radius:4px;background:#ece6da"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:10.5px;color:#b3ac9d;margin-top:7px;font-weight:600"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+          </div>
+
+          <div style="height:14px"></div>
+        </div>
+      </div>
+      <!-- start button floating -->
+      <div style="position:absolute;left:20px;right:20px;bottom:90px;z-index:30">
+        <button onClick="{{ goModes }}" style="width:100%;height:56px;border:none;border-radius:18px;background:linear-gradient(90deg,#4e8a76,#3a6f5e);color:#fff;font-size:15.5px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 14px 30px rgba(58,111,94,.4);display:flex;align-items:center;justify-content:center;gap:9px">Start card session <span style="opacity:.7">→</span></button>
+      </div>
+      </sc-if>
+
+      <!-- ==================== NOTIFICATION SETTINGS ==================== -->
+      <sc-if value="{{ isNotif }}" hint-placeholder-val="{{ true }}">
+      <div class="scr" style="position:absolute;inset:0;overflow-y:auto;background:#f6f2ea">
+        <div style="padding:56px 22px 14px;display:flex;align-items:center;gap:14px;background:#f6f2ea;position:sticky;top:0;z-index:5;border-bottom:1px solid #ece6da">
+          <button onClick="{{ goHome }}" style="width:38px;height:38px;border:1.5px solid #ddd6c8;background:#fff;border-radius:12px;font-size:18px;color:#8a8475;cursor:pointer;font-family:inherit">←</button>
+          <div style="font-size:18px;font-weight:800;color:#3a382f">Reminders</div>
+        </div>
+        <div style="padding:18px 20px 30px">
+          <div style="font-size:11px;color:#a59a82;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Notification types</div>
+
+          <div style="background:#fff;border-radius:18px;padding:16px;box-shadow:0 6px 18px rgba(40,45,40,.05)">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="width:40px;height:40px;border-radius:12px;background:#eef5f1;display:flex;align-items:center;justify-content:center;font-size:18px">🌱</span>
+              <div style="flex:1"><div style="font-size:14.5px;font-weight:800;color:#3a382f">Today's Memorisation</div><div style="font-size:12px;color:#8a8475">New sabaq · one āyah at a time</div></div>
+              <button onClick="{{ tgSabaq }}" style="width:48px;height:28px;border-radius:16px;border:none;cursor:pointer;position:relative;background:{{ sabaqBg }}"><span style="position:absolute;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .2s;left:{{ sabaqPos }}"></span></button>
+            </div>
+            <div style="background:#f6f2ea;border-radius:11px;padding:9px 13px;margin-top:12px;font-size:12px;color:#5a574d;font-style:italic">“Recite this āyah, then continue to the next one.”</div>
+            <div style="display:flex;gap:7px;margin-top:11px">
+              <button onClick="{{ sf15 }}" style="flex:1;border:1.5px solid #ece6da;background:#fff;border-radius:11px;padding:9px 0;font-size:12px;font-weight:700;color:#6b675c;font-family:inherit;cursor:pointer;{{ sFreq15 }}">15 min</button>
+              <button onClick="{{ sf30 }}" style="flex:1;border:1.5px solid #ece6da;background:#fff;border-radius:11px;padding:9px 0;font-size:12px;font-weight:700;color:#6b675c;font-family:inherit;cursor:pointer;{{ sFreq30 }}">30 min</button>
+              <button onClick="{{ sfhr }}" style="flex:1;border:1.5px solid #ece6da;background:#fff;border-radius:11px;padding:9px 0;font-size:12px;font-weight:700;color:#6b675c;font-family:inherit;cursor:pointer;{{ sFreqHr }}">Hourly</button>
+            </div>
+          </div>
+
+          <div style="background:#fff;border-radius:18px;padding:16px;box-shadow:0 6px 18px rgba(40,45,40,.05);margin-top:12px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="width:40px;height:40px;border-radius:12px;background:#e9f0ee;display:flex;align-items:center;justify-content:center;font-size:18px">🔁</span>
+              <div style="flex:1"><div style="font-size:14.5px;font-weight:800;color:#3a382f">Wird / Revision</div><div style="font-size:12px;color:#8a8475">Older hifz · recite in flow</div></div>
+              <button onClick="{{ tgWird }}" style="width:48px;height:28px;border-radius:16px;border:none;cursor:pointer;position:relative;background:{{ wirdBg }}"><span style="position:absolute;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .2s;left:{{ wirdPos }}"></span></button>
+            </div>
+            <div style="background:#f6f2ea;border-radius:11px;padding:9px 13px;margin-top:12px;font-size:12px;color:#5a574d;font-style:italic">“Start from this āyah. How far can you continue?”</div>
+            <div style="display:flex;gap:7px;margin-top:11px">
+              <button onClick="{{ wfhr }}" style="flex:1;border:1.5px solid #ece6da;background:#fff;border-radius:11px;padding:9px 0;font-size:12px;font-weight:700;color:#6b675c;font-family:inherit;cursor:pointer;{{ wFreqHr }}">Hourly</button>
+              <button onClick="{{ wf2 }}" style="flex:1;border:1.5px solid #ece6da;background:#fff;border-radius:11px;padding:9px 0;font-size:12px;font-weight:700;color:#6b675c;font-family:inherit;cursor:pointer;{{ wFreq2 }}">2× day</button>
+              <button onClick="{{ wfday }}" style="flex:1;border:1.5px solid #ece6da;background:#fff;border-radius:11px;padding:9px 0;font-size:12px;font-weight:700;color:#6b675c;font-family:inherit;cursor:pointer;{{ wFreqDay }}">Daily</button>
+            </div>
+          </div>
+
+          <div style="background:#fff;border-radius:18px;padding:16px;box-shadow:0 6px 18px rgba(40,45,40,.05);margin-top:12px;display:flex;align-items:center;gap:12px">
+            <span style="width:40px;height:40px;border-radius:12px;background:#fbf2e2;display:flex;align-items:center;justify-content:center;font-size:18px">⚠️</span>
+            <div style="flex:1"><div style="font-size:14.5px;font-weight:800;color:#3a382f">Weak spot reminders</div><div style="font-size:12px;color:#8a8475">Resurface āyāt you slipped on</div></div>
+            <button onClick="{{ tgWeak }}" style="width:48px;height:28px;border-radius:16px;border:none;cursor:pointer;position:relative;background:{{ weakBg }}"><span style="position:absolute;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .2s;left:{{ weakPos }}"></span></button>
+          </div>
+
+          <div style="font-size:11px;color:#a59a82;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin:22px 0 10px">Intensity</div>
+          <div style="display:flex;gap:8px">
+            <button onClick="{{ inLight }}" style="flex:1;border:1.5px solid #ece6da;background:#fff;border-radius:14px;padding:13px 0;text-align:center;font-family:inherit;cursor:pointer;{{ intLight }}"><div style="font-size:14px;font-weight:700;color:#3a382f">Light</div><div style="font-size:11px;color:#8a8475;margin-top:1px">soft &amp; calm</div></button>
+            <button onClick="{{ inBalanced }}" style="flex:1;border:1.5px solid #ece6da;background:#fff;border-radius:14px;padding:13px 0;text-align:center;font-family:inherit;cursor:pointer;{{ intBalanced }}"><div style="font-size:14px;font-weight:700;color:#3a382f">Balanced</div><div style="font-size:11px;color:#8a8475;margin-top:1px">recommended</div></button>
+            <button onClick="{{ inIntense }}" style="flex:1;border:1.5px solid #ece6da;background:#fff;border-radius:14px;padding:13px 0;text-align:center;font-family:inherit;cursor:pointer;{{ intIntense }}"><div style="font-size:14px;font-weight:700;color:#3a382f">Intense</div><div style="font-size:11px;color:#8a8475;margin-top:1px">push hard</div></button>
+          </div>
+
+          <div style="background:#fff;border-radius:18px;padding:4px 16px;margin-top:22px;box-shadow:0 6px 18px rgba(40,45,40,.05)">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid #f2ede3">
+              <div><div style="font-size:14px;font-weight:700;color:#3a382f">Active hours only</div><div style="font-size:12px;color:#8a8475">6:00 am – 9:30 pm</div></div>
+              <button onClick="{{ tgHours }}" style="width:48px;height:28px;border-radius:16px;border:none;cursor:pointer;position:relative;background:{{ hoursBg }}"><span style="position:absolute;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .2s;left:{{ hoursPos }}"></span></button>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0">
+              <div><div style="font-size:14px;font-weight:700;color:#3a382f">Sound &amp; haptics</div><div style="font-size:12px;color:#8a8475">Gentle chime on prompt</div></div>
+              <button onClick="{{ tgSound }}" style="width:48px;height:28px;border-radius:16px;border:none;cursor:pointer;position:relative;background:{{ soundBg }}"><span style="position:absolute;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .2s;left:{{ soundPos }}"></span></button>
+            </div>
+          </div>
+
+          <!-- notification previews -->
+          <div style="font-size:11px;color:#a59a82;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin:22px 0 10px">How they arrive</div>
+          <div style="background:rgba(255,255,255,.7);backdrop-filter:blur(8px);border:1px solid #ece6da;border-radius:18px;padding:14px 16px;box-shadow:0 8px 22px rgba(40,45,40,.08)">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <div style="width:22px;height:22px;border-radius:6px;background:#0f3b30;display:flex;align-items:center;justify-content:center;font-family:'Amiri Quran',serif;font-size:12px;color:#e9d9a8">ﷺ</div>
+              <span style="font-size:11.5px;font-weight:700;color:#6b675c">HIFZ CARDS · TODAY'S MEMORISATION</span><span style="font-size:11px;color:#b3ac9d;margin-left:auto">now</span>
+            </div>
+            <div style="font-size:13.5px;font-weight:700;color:#3a382f">Recite this āyah, then continue to the next ↓</div>
+            <div style="font-family:'Amiri Quran',serif;direction:rtl;font-size:21px;color:#2b2a22;line-height:1.9;margin-top:6px">أَمَّنْ هَذَا ٱلَّذِى يَرْزُقُكُمْ</div>
+          </div>
+          <div style="background:rgba(255,255,255,.7);backdrop-filter:blur(8px);border:1px solid #ece6da;border-radius:18px;padding:14px 16px;box-shadow:0 8px 22px rgba(40,45,40,.08);margin-top:10px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <div style="width:22px;height:22px;border-radius:6px;background:#0f3b30;display:flex;align-items:center;justify-content:center;font-family:'Amiri Quran',serif;font-size:12px;color:#e9d9a8">ﷺ</div>
+              <span style="font-size:11.5px;font-weight:700;color:#6b675c">HIFZ CARDS · WIRD</span><span style="font-size:11px;color:#b3ac9d;margin-left:auto">now</span>
+            </div>
+            <div style="font-size:13.5px;font-weight:700;color:#3a382f">Start from this āyah. How far can you continue? ↓</div>
+            <div style="font-family:'Amiri Quran',serif;direction:rtl;font-size:21px;color:#2b2a22;line-height:1.9;margin-top:6px">تَبَارَكَ ٱلَّذِى بِيَدِهِ ٱلْمُلْكُ</div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ==================== MODE SELECT ==================== -->
+      <sc-if value="{{ isModes }}" hint-placeholder-val="{{ true }}">
+      <div class="scr" style="position:absolute;inset:0;overflow-y:auto;background:#f6f2ea">
+        <div style="padding:56px 22px 6px;display:flex;align-items:center;gap:14px">
+          <button onClick="{{ goHome }}" style="width:38px;height:38px;border:1.5px solid #ddd6c8;background:#fff;border-radius:12px;font-size:18px;color:#8a8475;cursor:pointer;font-family:inherit">←</button>
+          <div style="font-size:20px;font-weight:800;color:#2b2a22">Choose your session</div>
+        </div>
+        <div style="padding:14px 20px 30px">
+          <div style="font-size:11px;color:#a59a82;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px">Three ways to drill</div>
+
+          <button onClick="{{ startNew }}" style="width:100%;text-align:left;background:#fff;border:1.5px solid #ece6da;border-radius:20px;padding:18px;font-family:inherit;cursor:pointer;box-shadow:0 6px 18px rgba(40,45,40,.05);display:block">
+            <div style="display:flex;align-items:center;gap:13px">
+              <span style="width:46px;height:46px;border-radius:14px;background:#eef5f1;display:flex;align-items:center;justify-content:center;font-size:21px">🌱</span>
+              <span style="flex:1"><span style="display:block;font-size:16px;font-weight:800;color:#3a382f">New Hifz Cards</span><span style="display:block;font-size:12.5px;color:#8a8475;margin-top:1px">Today's sabaq · {{ newDeckCount }} āyāt · one at a time</span></span>
+              <span style="color:#cbc4b6;font-size:20px">›</span>
+            </div>
+            <div style="background:#f6f2ea;border-radius:12px;padding:9px 13px;margin-top:13px;font-size:12px;color:#5a574d;font-style:italic">“Recite this āyah, then continue to the next one.”</div>
+          </button>
+
+          <button onClick="{{ startRevision }}" style="width:100%;text-align:left;background:#fff;border:1.5px solid #ece6da;border-radius:20px;padding:18px;font-family:inherit;cursor:pointer;box-shadow:0 6px 18px rgba(40,45,40,.05);margin-top:12px;display:block">
+            <div style="display:flex;align-items:center;gap:13px">
+              <span style="width:46px;height:46px;border-radius:14px;background:#e9f0ee;display:flex;align-items:center;justify-content:center;font-size:21px">🔁</span>
+              <span style="flex:1"><span style="display:block;font-size:16px;font-weight:800;color:#3a382f">Revision Flow Cards</span><span style="display:block;font-size:12.5px;color:#8a8475;margin-top:1px">Wird · start here, continue as far as you can</span></span>
+              <span style="color:#cbc4b6;font-size:20px">›</span>
+            </div>
+            <div style="background:#f6f2ea;border-radius:12px;padding:9px 13px;margin-top:13px;font-size:12px;color:#5a574d;font-style:italic">“Start from this āyah. How far can you continue?”</div>
+          </button>
+
+          <button onClick="{{ startWeak }}" style="width:100%;text-align:left;background:#fff;border:1.5px solid #ece6da;border-radius:20px;padding:18px;font-family:inherit;cursor:pointer;box-shadow:0 6px 18px rgba(40,45,40,.05);margin-top:12px;display:block">
+            <div style="display:flex;align-items:center;gap:13px">
+              <span style="width:46px;height:46px;border-radius:14px;background:#fbf2e2;display:flex;align-items:center;justify-content:center;font-size:21px">⚠️</span>
+              <span style="flex:1"><span style="display:block;font-size:16px;font-weight:800;color:#3a382f">Weak Spot Cards</span><span style="display:block;font-size:12.5px;color:#8a8475;margin-top:1px">Repeat the {{ weakDeckCount }} āyāt you slipped on</span></span>
+              <span style="color:#cbc4b6;font-size:20px">›</span>
+            </div>
+            <div style="background:#f6f2ea;border-radius:12px;padding:9px 13px;margin-top:13px;font-size:12px;color:#5a574d;font-style:italic">Drill the shaky ones until they settle.</div>
+          </button>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ==================== CARD SESSION ==================== -->
+      <sc-if value="{{ isSession }}" hint-placeholder-val="{{ true }}">
+      <div style="position:absolute;inset:0;background:linear-gradient(180deg,#eef3f0,#f3efe7)">
+        <sc-if value="{{ sessionRunning }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:0">
+          <div style="padding:56px 22px 0;display:flex;align-items:center;justify-content:space-between">
+            <button onClick="{{ goModes }}" style="width:38px;height:38px;border:none;background:rgba(255,255,255,.8);border-radius:12px;font-size:17px;color:#8a8475;cursor:pointer;font-family:inherit">✕</button>
+            <div style="background:#fff;border-radius:14px;padding:6px 16px;font-size:13px;font-weight:800;color:#4e8a76;box-shadow:0 4px 12px rgba(40,45,40,.06)">{{ cardNo }} / {{ cardTotal }}</div>
+            <div style="width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.8);display:flex;align-items:center;justify-content:center;font-size:15px;color:#8a8475">⚙</div>
+          </div>
+          <div style="padding:14px 22px 0"><div style="height:5px;border-radius:3px;background:#e4ddcf"><div style="height:5px;border-radius:3px;background:linear-gradient(90deg,#4e8a76,#6aa991);width:{{ progPct }}"></div></div></div>
+
+          <!-- card stack -->
+          <div style="position:absolute;left:22px;right:22px;top:150px;bottom:118px">
+            <div style="position:absolute;inset:14px 8px auto 8px;height:88%;background:#fff;border-radius:30px;opacity:.5;box-shadow:0 10px 24px rgba(40,45,40,.06)"></div>
+            <div style="position:absolute;inset:7px 4px auto 4px;height:92%;background:#fff;border-radius:30px;opacity:.75;box-shadow:0 10px 24px rgba(40,45,40,.06)"></div>
+            <div ref="{{ cardRef }}" onPointerDown="{{ onDown }}" onPointerMove="{{ onMove }}" onPointerUp="{{ onUp }}" onClick="{{ onTap }}" style="position:absolute;inset:0;height:100%;background:#fff;border-radius:30px;box-shadow:0 22px 50px rgba(40,45,40,.14);display:flex;flex-direction:column;align-items:center;padding:26px 22px;cursor:grab;touch-action:none;user-select:none;overflow:hidden">
+              <div style="border-radius:20px;padding:7px 18px;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;{{ modeChipBg }}">{{ modeChip }}</div>
+
+              <!-- AYAH MODES (new / weak) -->
+              <sc-if value="{{ isAyahMode }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%">
+                <div style="font-size:12px;color:#b3ac9d;font-weight:600;margin-bottom:16px">Sūrah Al-Mulk · Āyah {{ cardNum }}</div>
+                <div style="font-family:'Amiri Quran',serif;direction:rtl;font-size:30px;color:#1f2d27;line-height:2;text-align:center">{{ cardPrompt }}</div>
+                <sc-if value="{{ revealed }}" hint-placeholder-val="{{ true }}">
+                <div style="width:100%;margin-top:18px">
+                  <div style="height:1px;background:#f0ebe0;margin-bottom:16px"></div>
+                  <div style="font-family:'Amiri Quran',serif;direction:rtl;font-size:24px;color:#3a382f;line-height:2.1;text-align:center">{{ cardFull }}</div>
+                  <div style="font-size:12.5px;color:#8a8475;text-align:center;line-height:1.55;margin-top:14px;font-style:italic">{{ cardTrans }}</div>
+                </div>
+                </sc-if>
+              </div>
+              </sc-if>
+
+              <!-- REVISION FLOW MODE -->
+              <sc-if value="{{ isFlow }}" hint-placeholder-val="{{ true }}">
+              <div class="scr" style="flex:1;display:flex;flex-direction:column;align-items:center;width:100%;overflow-y:auto">
+                <div style="font-size:12px;color:#b3ac9d;font-weight:600;margin:14px 0 4px">Assigned section · {{ flowLabel }}</div>
+                <sc-if value="{{ notRevealed }}" hint-placeholder-val="{{ true }}">
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center">
+                  <div style="font-family:'Amiri Quran',serif;direction:rtl;font-size:30px;color:#1f2d27;line-height:2;text-align:center">{{ flowStartText }}</div>
+                  <div style="margin-top:26px;background:#eef5f1;border-radius:14px;padding:11px 18px;font-size:13px;font-weight:700;color:#2f5d4f;text-align:center">How far can you continue?</div>
+                </div>
+                </sc-if>
+                <sc-if value="{{ revealed }}" hint-placeholder-val="{{ true }}">
+                <div style="width:100%;padding-bottom:6px">
+                  <div style="position:sticky;top:0;background:#fff;padding:2px 0 11px;z-index:2"><div style="background:#fbf2e2;border-radius:12px;padding:9px 12px;font-size:12.5px;font-weight:800;color:#a87b25;text-align:center">Tap the āyah you got stuck at ↓</div></div>
+                  <sc-for list="{{ flowPassage }}" as="a" hint-placeholder-count="6">
+                  <button onClick="{{ a.tapStuck }}" style="width:100%;display:flex;gap:10px;align-items:flex-start;padding:11px 8px;border:none;border-bottom:1px solid #f4efe5;background:none;font-family:inherit;cursor:pointer;border-radius:10px" style-hover="background:#faf3e6">
+                    <span style="flex:none;width:24px;height:24px;border-radius:7px;background:#eef5f1;color:#2f5d4f;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:6px">{{ a.num }}</span>
+                    <span style="flex:1;font-family:'Amiri Quran',serif;direction:rtl;font-size:21px;color:#2b2a22;line-height:1.95;text-align:right">{{ a.text }}</span>
+                  </button>
+                  </sc-for>
+                  <button onClick="{{ revFinished }}" style="width:100%;margin-top:14px;height:50px;border:1.5px solid #cfe6dd;background:#eef5f1;border-radius:14px;font-size:13.5px;font-weight:800;color:#2f5d4f;cursor:pointer;font-family:inherit">✓ I reached the end — finished the section</button>
+                </div>
+                </sc-if>
+              </div>
+              </sc-if>
+
+              <sc-if value="{{ isAyahMode }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ playAudio }}" style="display:flex;align-items:center;gap:9px;background:#f3efe7;border:none;border-radius:30px;padding:10px 20px;font-size:13px;font-weight:700;color:#6b675c;cursor:pointer;font-family:inherit;margin-top:6px"><span style="width:24px;height:24px;border-radius:50%;background:#4e8a76;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px">▶</span> Play recitation</button>
+              </sc-if>
+            </div>
+          </div>
+
+          <!-- bottom: ayah marks -->
+          <sc-if value="{{ isAyahMode }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;left:22px;right:22px;bottom:30px;display:flex;gap:10px">
+            <button onClick="{{ markForgot }}" style="flex:1;height:54px;border:none;border-radius:16px;background:#fff;font-size:13px;font-weight:800;color:#c2483f;cursor:pointer;font-family:inherit;box-shadow:0 6px 16px rgba(194,72,63,.13);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2">Forgot<span style="font-size:10px;font-weight:600;color:#d99a93">show soon</span></button>
+            <button onClick="{{ markShaky }}" style="flex:1;height:54px;border:none;border-radius:16px;background:#fff;font-size:13px;font-weight:800;color:#b07d28;cursor:pointer;font-family:inherit;box-shadow:0 6px 16px rgba(184,146,68,.16);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2">Shaky<span style="font-size:10px;font-weight:600;color:#cda763">review later</span></button>
+            <button onClick="{{ markSolid }}" style="flex:1;height:54px;border:none;border-radius:16px;background:linear-gradient(90deg,#4e8a76,#3a6f5e);font-size:13px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;box-shadow:0 8px 18px rgba(58,111,94,.32);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2">Solid<span style="font-size:10px;font-weight:600;color:#cfe6dd">space it out</span></button>
+          </div>
+          </sc-if>
+
+          <!-- bottom: revision flow -->
+          <sc-if value="{{ isFlow }}" hint-placeholder-val="{{ true }}">
+            <sc-if value="{{ notRevealed }}" hint-placeholder-val="{{ true }}">
+            <div style="position:absolute;left:22px;right:22px;bottom:30px">
+              <button onClick="{{ revReveal }}" style="width:100%;height:54px;border:none;border-radius:16px;background:#0f3b30;color:#fff;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit">I've recited — mark where I stopped</button>
+            </div>
+            </sc-if>
+          </sc-if>
+        </div>
+        </sc-if>
+
+        <!-- session done -->
+        <sc-if value="{{ sessionDone }}" hint-placeholder-val="{{ true }}">
+        <div class="scr" style="position:absolute;inset:0;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:90px 26px 30px;text-align:center">
+          <div style="width:84px;height:84px;border-radius:50%;background:#0f3b30;display:flex;align-items:center;justify-content:center;font-size:38px;box-shadow:0 14px 30px rgba(15,59,48,.3)">✓</div>
+          <div style="font-size:24px;font-weight:800;color:#2b2a22;margin-top:20px">{{ doneTitle }}</div>
+          <div style="font-size:14px;color:#8a8475;margin-top:6px;line-height:1.5">{{ cardTotal }} cards · streak now {{ streakNow }} days 🔥</div>
+          <div style="display:flex;gap:10px;width:100%;margin-top:26px">
+            <div style="flex:1;background:#fff;border-radius:16px;padding:16px 0;box-shadow:0 6px 18px rgba(40,45,40,.05)"><div style="font-size:24px;font-weight:800;color:#4e8a76">{{ sumAVal }}</div><div style="font-size:11.5px;color:#8a8475;font-weight:600">{{ sumALabel }}</div></div>
+            <div style="flex:1;background:#fff;border-radius:16px;padding:16px 0;box-shadow:0 6px 18px rgba(40,45,40,.05)"><div style="font-size:24px;font-weight:800;color:#b07d28">{{ sumBVal }}</div><div style="font-size:11.5px;color:#8a8475;font-weight:600">{{ sumBLabel }}</div></div>
+            <div style="flex:1;background:#fff;border-radius:16px;padding:16px 0;box-shadow:0 6px 18px rgba(40,45,40,.05)"><div style="font-size:24px;font-weight:800;color:{{ sumCColor }}">{{ sumCVal }}</div><div style="font-size:11.5px;color:#8a8475;font-weight:600">{{ sumCLabel }}</div></div>
+          </div>
+          <div style="background:#fff;border-radius:18px;padding:18px;margin-top:14px;width:100%;box-shadow:0 6px 18px rgba(40,45,40,.05)">
+            <div style="font-family:'Amiri Quran',serif;direction:rtl;font-size:22px;color:#0f3b30;line-height:1.9">رَّبِّ زِدْنِى عِلْمًا</div>
+            <div style="font-size:12px;color:#8a8475;margin-top:6px">“My Lord, increase me in knowledge.” — 20:114</div>
+          </div>
+          <button onClick="{{ startSession }}" style="width:100%;height:52px;border:1.5px solid #cfe0d8;background:#fff;border-radius:16px;font-size:14.5px;font-weight:700;color:#3a6f5e;cursor:pointer;font-family:inherit;margin-top:20px">Review weak āyāt again</button>
+          <button onClick="{{ goHome }}" style="width:100%;height:52px;border:none;background:#0f3b30;color:#fff;border-radius:16px;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:10px">Back to home</button>
+        </div>
+        </sc-if>
+      </div>
+      </sc-if>
+
+      <!-- ==================== PROGRESS ==================== -->
+      <sc-if value="{{ isProgress }}" hint-placeholder-val="{{ true }}">
+      <div class="scr" style="position:absolute;inset:0;bottom:78px;overflow-y:auto;background:#f6f2ea">
+        <div style="padding:56px 22px 16px;background:#f6f2ea;position:sticky;top:0;z-index:5"><div style="font-size:24px;font-weight:800;color:#2b2a22;letter-spacing:-.02em">Progress</div><div style="font-size:13px;color:#8a8475;margin-top:2px">Sūrah Al-Mulk · Āyāt 12–22</div></div>
+
+        <div style="padding:4px 20px 0">
+          <!-- completion + revision -->
+          <div style="background:#fff;border-radius:20px;padding:18px;box-shadow:0 6px 18px rgba(40,45,40,.05)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:13px;font-weight:700;color:#3a382f">Memorisation</span><span style="font-size:13px;font-weight:800;color:#4e8a76">72%</span></div>
+            <div style="height:10px;border-radius:6px;background:#eee8dc;overflow:hidden"><div style="width:72%;height:10px;border-radius:6px;background:linear-gradient(90deg,#4e8a76,#6aa991)"></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin:18px 0 8px"><span style="font-size:13px;font-weight:700;color:#3a382f">Revision strength</span><span style="font-size:13px;font-weight:800;color:#b07d28">58%</span></div>
+            <div style="height:10px;border-radius:6px;background:#eee8dc;overflow:hidden"><div style="width:58%;height:10px;border-radius:6px;background:linear-gradient(90deg,#d9b15a,#e9d9a8)"></div></div>
+          </div>
+
+          <!-- breakdown -->
+          <div style="display:flex;gap:10px;margin-top:12px">
+            <div style="flex:1;background:#fff;border-radius:16px;padding:15px 0;text-align:center;box-shadow:0 6px 18px rgba(40,45,40,.05)"><div style="font-size:24px;font-weight:800;color:#4e8a76">38</div><div style="font-size:11px;color:#8a8475;font-weight:600;margin-top:1px">Easy</div></div>
+            <div style="flex:1;background:#fff;border-radius:16px;padding:15px 0;text-align:center;box-shadow:0 6px 18px rgba(40,45,40,.05)"><div style="font-size:24px;font-weight:800;color:#b07d28">11</div><div style="font-size:11px;color:#8a8475;font-weight:600;margin-top:1px">Weak</div></div>
+            <div style="flex:1;background:#fff;border-radius:16px;padding:15px 0;text-align:center;box-shadow:0 6px 18px rgba(40,45,40,.05)"><div style="font-size:24px;font-weight:800;color:#c2483f">4</div><div style="font-size:11px;color:#8a8475;font-weight:600;margin-top:1px">Failed</div></div>
+          </div>
+
+          <!-- weak map -->
+          <div style="background:#fff;border-radius:20px;padding:18px;margin-top:12px;box-shadow:0 6px 18px rgba(40,45,40,.05)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:13px;font-weight:700;color:#3a382f">Āyah map</span><span style="font-size:11px;color:#8a8475">tap any to drill</span></div>
+            <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:7px">
+              <div style="aspect-ratio:1;border-radius:9px;background:#4e8a76;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">12</div>
+              <div style="aspect-ratio:1;border-radius:9px;background:#4e8a76;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">13</div>
+              <div style="aspect-ratio:1;border-radius:9px;background:#e9d3a3;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#8a6420">14</div>
+              <div style="aspect-ratio:1;border-radius:9px;background:#4e8a76;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">15</div>
+              <div style="aspect-ratio:1;border-radius:9px;background:#e9d3a3;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#8a6420">16</div>
+              <div style="aspect-ratio:1;border-radius:9px;background:#e3a59c;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#9a3328">17</div>
+              <div style="aspect-ratio:1;border-radius:9px;background:#4e8a76;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">18</div>
+              <div style="aspect-ratio:1;border-radius:9px;background:#e3a59c;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#9a3328">19</div>
+              <div style="aspect-ratio:1;border-radius:9px;background:#e9d3a3;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#8a6420">20</div>
+              <div style="aspect-ratio:1;border-radius:9px;background:#e9d3a3;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#8a6420">21</div>
+              <div style="aspect-ratio:1;border-radius:9px;background:#4e8a76;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">22</div>
+              <div style="aspect-ratio:1;border-radius:9px;background:#f0ebe0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#bdb6a6">+</div>
+            </div>
+            <div style="display:flex;gap:14px;margin-top:14px;font-size:11px;color:#8a8475;font-weight:600">
+              <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:3px;background:#4e8a76"></span>Solid</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:3px;background:#e9d3a3"></span>Weak</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:3px;background:#e3a59c"></span>Failed</span>
+            </div>
+          </div>
+
+          <!-- streak calendar -->
+          <div style="background:#fff;border-radius:20px;padding:18px;margin-top:12px;box-shadow:0 6px 18px rgba(40,45,40,.05)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:13px;font-weight:700;color:#3a382f">Streak · June</span><span style="font-size:12.5px;font-weight:800;color:#4e8a76">14 days 🔥</span></div>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">
+              <div style="aspect-ratio:1;border-radius:7px;background:#f0ebe0"></div><div style="aspect-ratio:1;border-radius:7px;background:#cfe6dd"></div><div style="aspect-ratio:1;border-radius:7px;background:#4e8a76"></div><div style="aspect-ratio:1;border-radius:7px;background:#4e8a76"></div><div style="aspect-ratio:1;border-radius:7px;background:#cfe6dd"></div><div style="aspect-ratio:1;border-radius:7px;background:#4e8a76"></div><div style="aspect-ratio:1;border-radius:7px;background:#4e8a76"></div>
+              <div style="aspect-ratio:1;border-radius:7px;background:#4e8a76"></div><div style="aspect-ratio:1;border-radius:7px;background:#f0ebe0"></div><div style="aspect-ratio:1;border-radius:7px;background:#4e8a76"></div><div style="aspect-ratio:1;border-radius:7px;background:#4e8a76"></div><div style="aspect-ratio:1;border-radius:7px;background:#4e8a76"></div><div style="aspect-ratio:1;border-radius:7px;background:#4e8a76"></div><div style="aspect-ratio:1;border-radius:7px;background:#cfe6dd"></div>
+              <div style="aspect-ratio:1;border-radius:7px;background:#4e8a76"></div><div style="aspect-ratio:1;border-radius:7px;background:#4e8a76"></div><div style="aspect-ratio:1;border-radius:7px;background:#4e8a76"></div><div style="aspect-ratio:1;border-radius:7px;background:#4e8a76"></div><div style="aspect-ratio:1;border-radius:7px;background:#4e8a76"></div><div style="aspect-ratio:1;border-radius:7px;background:#4e8a76;outline:2px solid #e9d9a8;outline-offset:1px"></div><div style="aspect-ratio:1;border-radius:7px;background:#f0ebe0"></div>
+            </div>
+          </div>
+
+          <button onClick="{{ goRecap }}" style="width:100%;height:52px;border:none;border-radius:16px;background:#0f3b30;color:#fff;font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:14px;display:flex;align-items:center;justify-content:center;gap:8px">See weekly recap <span style="opacity:.7">→</span></button>
+          <div style="height:16px"></div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ==================== LEADERBOARD ==================== -->
+      <sc-if value="{{ isBoard }}" hint-placeholder-val="{{ true }}">
+      <div class="scr" style="position:absolute;inset:0;bottom:78px;overflow-y:auto;background:#f6f2ea">
+        <div style="padding:56px 22px 14px;background:#f6f2ea;position:sticky;top:0;z-index:5">
+          <div style="font-size:24px;font-weight:800;color:#2b2a22;letter-spacing:-.02em">Circle</div>
+          <div style="font-size:13px;color:#8a8475;margin-top:2px">Ranked by effort &amp; consistency — not how much you know.</div>
+          <div style="display:flex;gap:8px;margin-top:14px">
+            <button onClick="{{ bdFriendsFn }}" style="flex:1;border:none;border-radius:12px;padding:9px 0;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;{{ bdFriends }}">Friends</button>
+            <button onClick="{{ bdClassFn }}" style="flex:1;border:none;border-radius:12px;padding:9px 0;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;{{ bdClass }}">My Class</button>
+          </div>
+        </div>
+
+        <div style="padding:6px 20px 0">
+          <!-- podium -->
+          <div style="display:flex;align-items:flex-end;justify-content:center;gap:12px;margin:8px 0 4px">
+            <div style="text-align:center">
+              <div style="width:52px;height:52px;border-radius:50%;background:#dfe9e4;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#3a6f5e">A</div>
+              <div style="font-size:12px;font-weight:700;color:#3a382f;margin-top:6px">Aisha</div>
+              <div style="font-size:11px;color:#8a8475">96 pts</div>
+              <div style="height:46px;width:56px;background:#cfe0d8;border-radius:10px 10px 0 0;margin-top:6px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#3a6f5e">2</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:16px">👑</div>
+              <div style="width:60px;height:60px;border-radius:50%;background:#0f3b30;margin:2px auto 0;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#e9d9a8;border:3px solid #e9d9a8">B</div>
+              <div style="font-size:12.5px;font-weight:800;color:#3a382f;margin-top:6px">Bilal</div>
+              <div style="font-size:11px;color:#8a8475">104 pts</div>
+              <div style="height:66px;width:60px;background:#4e8a76;border-radius:10px 10px 0 0;margin-top:6px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:#fff">1</div>
+            </div>
+            <div style="text-align:center">
+              <div style="width:52px;height:52px;border-radius:50%;background:#f1e6cf;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#a87b25">Y</div>
+              <div style="font-size:12px;font-weight:700;color:#3a382f;margin-top:6px">You</div>
+              <div style="font-size:11px;color:#8a8475">91 pts</div>
+              <div style="height:36px;width:56px;background:#e9d9a8;border-radius:10px 10px 0 0;margin-top:6px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#a87b25">3</div>
+            </div>
+          </div>
+
+          <!-- list -->
+          <div style="background:#fff;border-radius:20px;padding:6px 16px;margin-top:14px;box-shadow:0 6px 18px rgba(40,45,40,.05)">
+            <sc-for list="{{ board }}" as="p" hint-placeholder-count="5">
+            <div style="display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid {{ p.border }}">
+              <div style="width:22px;font-size:13px;font-weight:800;color:#b3ac9d;text-align:center">{{ p.rank }}</div>
+              <div style="width:38px;height:38px;border-radius:50%;background:{{ p.av }};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff">{{ p.initial }}</div>
+              <div style="flex:1"><div style="font-size:14px;font-weight:700;color:{{ p.nameColor }}">{{ p.name }}</div><div style="font-size:11.5px;color:#8a8475">🔥 {{ p.streak }} day streak · {{ p.cards }} cards</div></div>
+              <div style="text-align:right"><div style="font-size:15px;font-weight:800;color:#3a6f5e">{{ p.pts }}</div><div style="font-size:10px;color:#a59a82">pts</div></div>
+            </div>
+            </sc-for>
+          </div>
+
+          <!-- group goal -->
+          <div style="background:#0f3b30;border-radius:20px;padding:18px;margin-top:14px;color:#fff">
+            <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;font-weight:700">Group goal · this week</span><span style="font-size:12px;color:#8fc3b3;font-weight:700">412 / 500 cards</span></div>
+            <div style="height:9px;border-radius:6px;background:rgba(255,255,255,.16);margin-top:12px;overflow:hidden"><div style="width:82%;height:9px;border-radius:6px;background:#e9d9a8"></div></div>
+            <div style="font-size:12px;color:#bcd8cf;margin-top:9px;line-height:1.5">88 cards to go together. Every card counts — keep showing up. 🤲</div>
+          </div>
+          <div style="height:16px"></div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ==================== WEEKLY RECAP ==================== -->
+      <sc-if value="{{ isRecap }}" hint-placeholder-val="{{ true }}">
+      <div class="scr" style="position:absolute;inset:0;overflow-y:auto;background:linear-gradient(180deg,#0f3b30,#0a2820)">
+        <div style="padding:56px 22px 14px;display:flex;align-items:center;justify-content:space-between">
+          <button onClick="{{ goProgress }}" style="width:38px;height:38px;border:none;background:rgba(255,255,255,.12);border-radius:12px;font-size:18px;color:#cfe3db;cursor:pointer;font-family:inherit">←</button>
+          <div style="font-size:14px;font-weight:700;color:#cfe3db">Weekly recap</div>
+          <div style="width:38px"></div>
+        </div>
+        <div style="padding:6px 22px 30px">
+          <!-- shareable card -->
+          <div style="background:linear-gradient(160deg,#fbfaf5,#f1ece0);border-radius:26px;padding:26px 22px;box-shadow:0 20px 50px rgba(0,0,0,.3)">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#a59a82;font-weight:700">Week of 15 June</div>
+              <div style="width:26px;height:26px;border-radius:8px;background:#0f3b30;display:flex;align-items:center;justify-content:center;font-family:'Amiri Quran',serif;font-size:14px;color:#e9d9a8">ﷺ</div>
+            </div>
+            <div style="font-size:48px;font-weight:800;color:#0f3b30;letter-spacing:-.03em;margin-top:14px;line-height:1">84</div>
+            <div style="font-size:15px;color:#6b675c;font-weight:600">cards reviewed this week</div>
+            <div style="height:1px;background:#e7e0d2;margin:18px 0"></div>
+            <div style="display:flex;flex-direction:column;gap:13px">
+              <div style="display:flex;align-items:center;gap:12px"><span style="font-size:18px">💪</span><span style="font-size:13.5px;color:#3a382f"><b>Strongest range:</b> Āyāt 12–15</span></div>
+              <div style="display:flex;align-items:center;gap:12px"><span style="font-size:18px">🎯</span><span style="font-size:13.5px;color:#3a382f"><b>Weakest:</b> Āyāt 17 &amp; 19</span></div>
+              <div style="display:flex;align-items:center;gap:12px"><span style="font-size:18px">📈</span><span style="font-size:13.5px;color:#3a382f"><b>Improved:</b> 12 weak cards turned solid</span></div>
+              <div style="display:flex;align-items:center;gap:12px"><span style="font-size:18px">🔥</span><span style="font-size:13.5px;color:#3a382f"><b>Streak:</b> maintained all 7 days</span></div>
+            </div>
+            <div style="background:#0f3b30;border-radius:16px;padding:14px;margin-top:18px;text-align:center">
+              <div style="font-family:'Amiri Quran',serif;direction:rtl;font-size:20px;color:#e9d9a8;line-height:1.8">فَٱذْكُرُونِىٓ أَذْكُرْكُمْ</div>
+              <div style="font-size:11px;color:#bcd8cf;margin-top:5px">“So remember Me; I will remember you.” — 2:152</div>
+            </div>
+          </div>
+          <button style="width:100%;height:52px;border:none;border-radius:16px;background:#e9d9a8;color:#0f3b30;font-size:14.5px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:18px;display:flex;align-items:center;justify-content:center;gap:8px">↗ Share recap card</button>
+          <div style="display:flex;gap:10px;margin-top:10px">
+            <div style="flex:1;background:rgba(255,255,255,.08);border-radius:14px;padding:14px;text-align:center"><div style="font-size:20px;font-weight:800;color:#fff">320</div><div style="font-size:11px;color:#8fc3b3">āyāt revised</div></div>
+            <div style="flex:1;background:rgba(255,255,255,.08);border-radius:14px;padding:14px;text-align:center"><div style="font-size:20px;font-weight:800;color:#fff">+3</div><div style="font-size:11px;color:#8fc3b3">new memorised</div></div>
+            <div style="flex:1;background:rgba(255,255,255,.08);border-radius:14px;padding:14px;text-align:center"><div style="font-size:20px;font-weight:800;color:#fff">91</div><div style="font-size:11px;color:#8fc3b3">effort pts</div></div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ==================== PROFILE ==================== -->
+      <sc-if value="{{ isProfile }}" hint-placeholder-val="{{ true }}">
+      <div class="scr" style="position:absolute;inset:0;bottom:78px;overflow-y:auto;background:#f6f2ea">
+        <div style="background:linear-gradient(165deg,#11463a,#0c3128);padding:56px 22px 28px;border-radius:0 0 30px 30px;color:#fff">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;font-size:13px;font-weight:700"><span>9:41</span><span style="font-size:11px;letter-spacing:1px">5G ▮▮▮</span></div>
+          <div style="display:flex;align-items:center;gap:16px;margin-top:18px">
+            <div style="width:66px;height:66px;border-radius:22px;background:#e9d9a8;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#0f3b30">Y</div>
+            <div><div style="font-size:21px;font-weight:800">Yusuf Rahman</div><div style="font-size:12.5px;color:#bcd8cf;margin-top:2px">Memorising since Muḥarram 1447</div></div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:20px">
+            <div style="flex:1;background:rgba(255,255,255,.1);border-radius:14px;padding:12px;text-align:center"><div style="font-size:19px;font-weight:800">312</div><div style="font-size:10.5px;color:#bcd8cf">āyāt done</div></div>
+            <div style="flex:1;background:rgba(255,255,255,.1);border-radius:14px;padding:12px;text-align:center"><div style="font-size:19px;font-weight:800">14</div><div style="font-size:10.5px;color:#bcd8cf">pages</div></div>
+            <div style="flex:1;background:rgba(255,255,255,.1);border-radius:14px;padding:12px;text-align:center"><div style="font-size:19px;font-weight:800">29</div><div style="font-size:10.5px;color:#bcd8cf">best streak</div></div>
+          </div>
+        </div>
+
+        <div style="padding:18px 20px 0">
+          <div style="font-size:11px;color:#a59a82;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Current goal</div>
+          <div style="background:#fff;border-radius:18px;padding:16px;box-shadow:0 6px 18px rgba(40,45,40,.05);display:flex;align-items:center;justify-content:space-between">
+            <div><div style="font-size:15px;font-weight:700;color:#3a382f">Finish Sūrah Al-Mulk</div><div style="font-size:12.5px;color:#8a8475;margin-top:2px">22 of 30 āyāt · 8 to go</div></div>
+            <div style="font-family:'Amiri Quran',serif;direction:rtl;font-size:26px;color:#0f3b30">الملك</div>
+          </div>
+
+          <div style="font-size:11px;color:#a59a82;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin:20px 0 10px">Settings</div>
+          <div style="background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 6px 18px rgba(40,45,40,.05)">
+            <button onClick="{{ goNotif }}" style="width:100%;display:flex;align-items:center;gap:13px;padding:15px 16px;border:none;border-bottom:1px solid #f2ede3;background:#fff;font-family:inherit;cursor:pointer;text-align:left"><span style="font-size:17px">🔔</span><span style="flex:1;font-size:14.5px;font-weight:600;color:#3a382f">Reminder preferences</span><span style="color:#cbc4b6">›</span></button>
+            <button onClick="{{ goBoard }}" style="width:100%;display:flex;align-items:center;gap:13px;padding:15px 16px;border:none;border-bottom:1px solid #f2ede3;background:#fff;font-family:inherit;cursor:pointer;text-align:left"><span style="font-size:17px">👥</span><span style="flex:1;font-size:14.5px;font-weight:600;color:#3a382f">Friends &amp; classes</span><span style="font-size:11px;color:#a59a82">4 friends ›</span></button>
+            <button style="width:100%;display:flex;align-items:center;gap:13px;padding:15px 16px;border:none;background:#fff;font-family:inherit;cursor:pointer;text-align:left"><span style="font-size:17px">🎯</span><span style="flex:1;font-size:14.5px;font-weight:600;color:#3a382f">Memorisation range</span><span style="color:#cbc4b6">›</span></button>
+          </div>
+
+          <!-- premium -->
+          <div style="background:linear-gradient(150deg,#1a5446,#0f3b30);border-radius:20px;padding:20px;margin-top:20px;color:#fff;position:relative;overflow:hidden">
+            <div style="position:absolute;right:-20px;top:-20px;font-family:'Amiri Quran',serif;direction:rtl;font-size:90px;color:rgba(233,217,168,.1)">ﷺ</div>
+            <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(233,217,168,.18);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:800;color:#e9d9a8">✦ HIFZ PREMIUM</div>
+            <div style="font-size:18px;font-weight:800;margin-top:12px">Unlock deeper revision</div>
+            <div style="font-size:12.5px;color:#bcd8cf;margin-top:6px;line-height:1.55">Reciter audio for every āyah, smart spaced-repetition scheduling, and unlimited weak-āyah drills.</div>
+            <button style="width:100%;height:48px;border:none;border-radius:14px;background:#e9d9a8;color:#0f3b30;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:16px">Try free for 7 days</button>
+          </div>
+          <div style="height:16px"></div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ==================== BOTTOM TAB BAR ==================== -->
+      <sc-if value="{{ showTabs }}" hint-placeholder-val="{{ true }}">
+      <div style="position:absolute;left:0;right:0;bottom:0;height:78px;background:rgba(255,255,255,.92);backdrop-filter:blur(14px);border-top:1px solid #ece6da;display:flex;align-items:flex-start;padding:11px 16px 0;z-index:40">
+        <button onClick="{{ goHome }}" style="flex:1;background:none;border:none;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:4px;color:{{ tabHome }}">
+          <svg width="23" height="23" viewBox="0 0 24 24" fill="none"><path d="M4 11l8-7 8 7M6 10v9h12v-9" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span style="font-size:10.5px;font-weight:700">Home</span>
+        </button>
+        <button onClick="{{ goProgress }}" style="flex:1;background:none;border:none;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:4px;color:{{ tabProgress }}">
+          <svg width="23" height="23" viewBox="0 0 24 24" fill="none"><path d="M5 19V11M12 19V5M19 19v-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+          <span style="font-size:10.5px;font-weight:700">Progress</span>
+        </button>
+        <button onClick="{{ goBoard }}" style="flex:1;background:none;border:none;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:4px;color:{{ tabBoard }}">
+          <svg width="23" height="23" viewBox="0 0 24 24" fill="none"><path d="M7 4h10v4a5 5 0 01-10 0V4zM9 14h6M10 18h4M12 13v5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span style="font-size:10.5px;font-weight:700">Circle</span>
+        </button>
+        <button onClick="{{ goProfile }}" style="flex:1;background:none;border:none;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:4px;color:{{ tabProfile }}">
+          <svg width="23" height="23" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="currentColor" stroke-width="1.9"/><path d="M5.5 19a6.5 6.5 0 0113 0" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+          <span style="font-size:10.5px;font-weight:700">Profile</span>
+        </button>
+      </div>
+      </sc-if>
+
+      <!-- home indicator -->
+      <div style="position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:128px;height:5px;border-radius:3px;background:rgba(40,45,40,.25);z-index:95"></div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.cardRef = React.createRef();
+    this.cards = [
+      {num:12, prompt:'إِنَّ ٱلَّذِينَ يَخْشَوْنَ رَبَّهُم بِٱلْغَيْبِ', full:'إِنَّ ٱلَّذِينَ يَخْشَوْنَ رَبَّهُم بِٱلْغَيْبِ لَهُم مَّغْفِرَةٌ وَأَجْرٌ كَبِيرٌ', tr:'Indeed, those who fear their Lord unseen will have forgiveness and great reward.'},
+      {num:13, prompt:'وَأَسِرُّوا۟ قَوْلَكُمْ أَوِ ٱجْهَرُوا۟ بِهِ', full:'وَأَسِرُّوا۟ قَوْلَكُمْ أَوِ ٱجْهَرُوا۟ بِهِۦ ۖ إِنَّهُۥ عَلِيمٌۢ بِذَاتِ ٱلصُّدُورِ', tr:'And conceal your speech or publicize it; He knows what is within the breasts.'},
+      {num:14, prompt:'أَلَا يَعْلَمُ مَنْ خَلَقَ', full:'أَلَا يَعْلَمُ مَنْ خَلَقَ وَهُوَ ٱللَّطِيفُ ٱلْخَبِيرُ', tr:'Does He who created not know, while He is the Subtle, the Acquainted?'},
+      {num:15, prompt:'هُوَ ٱلَّذِى جَعَلَ لَكُمُ ٱلْأَرْضَ ذَلُولًا', full:'هُوَ ٱلَّذِى جَعَلَ لَكُمُ ٱلْأَرْضَ ذَلُولًا فَٱمْشُوا۟ فِى مَنَاكِبِهَا وَكُلُوا۟ مِن رِّزْقِهِ', tr:'It is He who made the earth tame for you, so walk among its slopes and eat of His provision.'},
+      {num:16, prompt:'ءَأَمِنتُم مَّن فِى ٱلسَّمَآءِ', full:'ءَأَمِنتُم مَّن فِى ٱلسَّمَآءِ أَن يَخْسِفَ بِكُمُ ٱلْأَرْضَ فَإِذَا هِىَ تَمُورُ', tr:'Do you feel secure that He would not cause the earth to swallow you while it shakes?'},
+      {num:17, prompt:'أَمْ أَمِنتُم مَّن فِى ٱلسَّمَآءِ', full:'أَمْ أَمِنتُم مَّن فِى ٱلسَّمَآءِ أَن يُرْسِلَ عَلَيْكُمْ حَاصِبًا ۖ فَسَتَعْلَمُونَ كَيْفَ نَذِيرِ', tr:'Or do you feel secure that He would not send a storm of stones? You will know My warning.'},
+      {num:18, prompt:'وَلَقَدْ كَذَّبَ ٱلَّذِينَ مِن قَبْلِهِمْ', full:'وَلَقَدْ كَذَّبَ ٱلَّذِينَ مِن قَبْلِهِمْ فَكَيْفَ كَانَ نَكِيرِ', tr:'And already had those before them denied, so how terrible was My reproach.'},
+      {num:19, prompt:'أَوَلَمْ يَرَوْا۟ إِلَى ٱلطَّيْرِ فَوْقَهُمْ', full:'أَوَلَمْ يَرَوْا۟ إِلَى ٱلطَّيْرِ فَوْقَهُمْ صَٰٓفَّٰتٍ وَيَقْبِضْنَ ۚ مَا يُمْسِكُهُنَّ إِلَّا ٱلرَّحْمَٰنُ', tr:'Do they not see the birds above them, spreading and folding their wings? None holds them but the Most Merciful.'},
+      {num:20, prompt:'أَمَّنْ هَذَا ٱلَّذِى هُوَ جُندٌ لَّكُمْ', full:'أَمَّنْ هَذَا ٱلَّذِى هُوَ جُندٌ لَّكُمْ يَنصُرُكُم مِّن دُونِ ٱلرَّحْمَٰنِ', tr:'Who is it that could be an army for you to aid you other than the Most Merciful?'},
+      {num:21, prompt:'أَمَّنْ هَذَا ٱلَّذِى يَرْزُقُكُمْ', full:'أَمَّنْ هَذَا ٱلَّذِى يَرْزُقُكُمْ إِنْ أَمْسَكَ رِزْقَهُ ۚ بَل لَّجُّوا۟ فِى عُتُوٍّ وَنُفُورٍ', tr:'Who is it that could provide for you if He withheld His provision? Yet they persist in disdain.'},
+      {num:22, prompt:'أَفَمَن يَمْشِى مُكِبًّا عَلَى وَجْهِهِ', full:'أَفَمَن يَمْشِى مُكِبًّا عَلَى وَجْهِهِۦٓ أَهْدَى أَمَّن يَمْشِى سَوِيًّا عَلَى صِرَٰطٍ مُّسْتَقِيمٍ', tr:'Is one who walks fallen on his face better guided, or one who walks upright on a straight path?'}
+    ];
+    this.older = [
+      {num:1, text:'تَبَارَكَ ٱلَّذِى بِيَدِهِ ٱلْمُلْكُ وَهُوَ عَلَىٰ كُلِّ شَىْءٍ قَدِيرٌ'},
+      {num:2, text:'ٱلَّذِى خَلَقَ ٱلْمَوْتَ وَٱلْحَيَوٰةَ لِيَبْلُوَكُمْ أَيُّكُمْ أَحْسَنُ عَمَلًا'},
+      {num:3, text:'ٱلَّذِى خَلَقَ سَبْعَ سَمَٰوَٰتٍ طِبَاقًا ۖ مَّا تَرَىٰ فِى خَلْقِ ٱلرَّحْمَٰنِ مِن تَفَٰوُتٍ'},
+      {num:4, text:'ثُمَّ ٱرْجِعِ ٱلْبَصَرَ كَرَّتَيْنِ يَنقَلِبْ إِلَيْكَ ٱلْبَصَرُ خَاسِئًا وَهُوَ حَسِيرٌ'},
+      {num:5, text:'وَلَقَدْ زَيَّنَّا ٱلسَّمَآءَ ٱلدُّنْيَا بِمَصَٰبِيحَ'}
+    ];
+    this.revisionFlows = [
+      {start:12, label:'Sūrah Al-Mulk · Āyāt 12–22', passage:this.cards.map(c=>({num:c.num,text:c.full}))},
+      {start:1, label:'Sūrah Al-Mulk · Āyāt 1–5', passage:this.older.map(o=>({num:o.num,text:o.text}))}
+    ];
+    this.newDeck = this.cards.filter(c=>[20,21,22].includes(c.num));
+    this.weakDeck = this.cards.filter(c=>[14,16,17,19,20,21].includes(c.num));
+    this.activeDeck = this.newDeck;
+  }
+
+  state = {
+    screen: 'onboarding',
+    onbStep: 0,
+    goal: 'new',
+    rangeType: 'surah',
+    ayahFrom: 12,
+    ayahTo: 22,
+    ordering: 'sequential',
+    perDay: 3,
+    freq: '30 min',
+    promptType: 'ayah',
+    days: {Mon:true,Tue:true,Wed:true,Thu:true,Fri:true,Sat:false,Sun:false},
+    intensity: 'balanced',
+    hoursOn: true,
+    soundOn: true,
+    boardTab: 'friends',
+    sessionMode: 'new',
+    cardIndex: 0,
+    revealed: false,
+    sessionPhase: 'idle',
+    results: {},
+    sabaqOn: true,
+    wirdOn: true,
+    weakOn: true,
+    sabaqFreq: '30 min',
+    wirdFreq: 'daily'
+  };
+
+  // ---- navigation ----
+  nav(screen){ this.setState({screen}); }
+  beginApp(){ this.setState({screen:'home'}); }
+  goModes(){ this.setState({screen:'modes'}); }
+  startSession(mode){
+    const m = mode || this.state.sessionMode || 'new';
+    this.activeDeck = m==='new' ? this.newDeck : m==='weak' ? this.weakDeck : this.revisionFlows;
+    this.setState({screen:'session', sessionMode:m, sessionPhase:'running', cardIndex:0, revealed:false, results:{}});
+    this._resetCard();
+  }
+
+  // ---- onboarding ----
+  obNext(){ const s=this.state.onbStep; if(s>=4){ this.beginApp(); } else { this.setState({onbStep:s+1}); } }
+  obBack(){ const s=this.state.onbStep; if(s<=0){ } else { this.setState({onbStep:s-1}); } }
+
+  // ---- range steppers ----
+  clamp(v){ return Math.max(1, Math.min(30, v)); }
+  incFrom(){ this.setState(st=>({ayahFrom:Math.min(this.clamp(st.ayahFrom+1), st.ayahTo)})); }
+  decFrom(){ this.setState(st=>({ayahFrom:this.clamp(st.ayahFrom-1)})); }
+  incTo(){ this.setState(st=>({ayahTo:this.clamp(st.ayahTo+1)})); }
+  decTo(){ this.setState(st=>({ayahTo:Math.max(this.clamp(st.ayahTo-1), st.ayahFrom)})); }
+  toggleDay(d){ this.setState(st=>({days:{...st.days,[d]:!st.days[d]}})); }
+
+  // ---- card session ----
+  _resetCard(){
+    requestAnimationFrame(()=>{
+      const el=this.cardRef.current; if(el){ el.style.transition='none'; el.style.transform='translateX(0) rotate(0deg)'; el.style.opacity='1'; }
+    });
+  }
+  advance(){
+    this.setState(st=>{
+      if(st.cardIndex >= this.activeDeck.length-1){ return {sessionPhase:'done'}; }
+      return {cardIndex:st.cardIndex+1, revealed:false};
+    }, ()=> this._resetCard());
+  }
+  tap(){
+    if(this._moved) return;
+    if(this.state.sessionMode==='revision') return;
+    this.setState(st=>({revealed: !st.revealed}));
+  }
+  mark(status){
+    const num=this.activeDeck[this.state.cardIndex].num;
+    const el=this.cardRef.current;
+    if(el){ el.style.transition='transform .3s ease, opacity .3s ease'; el.style.transform='translateX(0) translateY(-40px) scale(.96)'; el.style.opacity='0'; }
+    this.setState(st=>({results:{...st.results,[num]:status}}));
+    setTimeout(()=>this.advance(), 180);
+  }
+  markRev(outcome){
+    const key='w'+this.activeDeck[this.state.cardIndex].start;
+    const el=this.cardRef.current;
+    if(el){ el.style.transition='transform .3s ease, opacity .3s ease'; el.style.transform='translateX(0) translateY(-40px) scale(.96)'; el.style.opacity='0'; }
+    this.setState(st=>({results:{...st.results,[key]:outcome}}));
+    setTimeout(()=>this.advance(), 180);
+  }
+  revReveal(e){ if(e&&e.stopPropagation)e.stopPropagation(); this._moved=false; this.setState({revealed:true}); }
+  markStuckAt(num){ this._moved=true; this.markRev('stuck@'+num); }
+  onDown(e){
+    this._dragging=true; this._startX=e.clientX; this._moved=false;
+    const el=this.cardRef.current; if(el){ el.style.transition='none'; el.style.cursor='grabbing'; }
+    try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(err){}
+  }
+  onMove(e){
+    if(!this._dragging) return;
+    const dx=e.clientX-this._startX;
+    if(Math.abs(dx)>5) this._moved=true;
+    const el=this.cardRef.current;
+    if(el){ el.style.transform='translateX('+dx+'px) rotate('+(dx*0.045)+'deg)'; el.style.opacity=String(1-Math.min(Math.abs(dx)/620,0.4)); }
+  }
+  onUp(e){
+    if(!this._dragging) return; this._dragging=false;
+    const dx=e.clientX-this._startX;
+    const el=this.cardRef.current;
+    if(el) el.style.cursor='grab';
+    if(Math.abs(dx)>108){
+      const dir=dx>0?1:-1;
+      if(el){ el.style.transition='transform .32s ease, opacity .32s ease'; el.style.transform='translateX('+(dir*620)+'px) rotate('+(dir*14)+'deg)'; el.style.opacity='0'; }
+      setTimeout(()=>this.advance(), 200);
+    } else {
+      if(el){ el.style.transition='transform .3s cubic-bezier(.2,.8,.3,1)'; el.style.transform='translateX(0) rotate(0deg)'; el.style.opacity='1'; }
+      setTimeout(()=>{ this._moved=false; }, 30);
+    }
+  }
+  playAudio(e){ if(e&&e.stopPropagation) e.stopPropagation(); }
+
+  renderVals(){
+    const st=this.state;
+    const ACC='border-color:#4e8a76;background:#eef5f1;color:#2f5d4f;box-shadow:0 4px 14px rgba(78,138,118,.13)';
+    const GREEN='color:#4e8a76';
+    const MUTE='color:#b3ac9d';
+    const pick=(a,b)=> a===b?ACC:'';
+    const dayStyle=on=> on?'border-color:#4e8a76;background:#4e8a76;color:#fff':'';
+    const mark=on=> on?'●':'○';
+    const mode=st.sessionMode;
+    const deck=this.activeDeck||this.newDeck;
+    const idx=Math.min(st.cardIndex, deck.length-1);
+    const card=deck[idx]||{};
+    const isRev=mode==='revision';
+    const rangeCount=Math.max(0, st.ayahTo-st.ayahFrom+1);
+    const results=st.results; const vals=Object.values(results);
+    const board=[
+      {rank:1, name:'Bilal', initial:'B', av:'#4e8a76', streak:21, cards:140, pts:104, nameColor:'#3a382f', border:'#f2ede3'},
+      {rank:2, name:'Aisha', initial:'A', av:'#7a9c91', streak:18, cards:128, pts:96, nameColor:'#3a382f', border:'#f2ede3'},
+      {rank:3, name:'You', initial:'Y', av:'#c8a44a', streak:14, cards:84, pts:91, nameColor:'#a87b25', border:'#f2ede3'},
+      {rank:4, name:'Omar', initial:'O', av:'#9a8fb0', streak:11, cards:77, pts:80, nameColor:'#3a382f', border:'#f2ede3'},
+      {rank:5, name:'Maryam', initial:'M', av:'#b08a8a', streak:9, cards:61, pts:68, nameColor:'#3a382f', border:'transparent'}
+    ];
+
+    return {
+      // jumper / nav
+      goOnb: ()=>this.setState({screen:'onboarding', onbStep:0}),
+      goHome: ()=>this.nav('home'),
+      goNotif: ()=>this.nav('notif'),
+      goSession: ()=>this.setState({screen:'modes'}),
+      goProgress: ()=>this.nav('progress'),
+      goBoard: ()=>this.nav('board'),
+      goRecap: ()=>this.nav('recap'),
+      goProfile: ()=>this.nav('profile'),
+
+      // screen flags
+      isOnb: st.screen==='onboarding',
+      isHome: st.screen==='home',
+      isModes: st.screen==='modes',
+      isNotif: st.screen==='notif',
+      isSession: st.screen==='session',
+      isProgress: st.screen==='progress',
+      isBoard: st.screen==='board',
+      isRecap: st.screen==='recap',
+      isProfile: st.screen==='profile',
+      showTabs: ['home','progress','board','profile'].includes(st.screen),
+
+      // tabs
+      tabHome: st.screen==='home'?'#0f3b30':'#b3ac9d',
+      tabProgress: st.screen==='progress'?'#0f3b30':'#b3ac9d',
+      tabBoard: st.screen==='board'?'#0f3b30':'#b3ac9d',
+      tabProfile: st.screen==='profile'?'#0f3b30':'#b3ac9d',
+
+      // onboarding
+      onbStep: st.onbStep,
+      o0: st.onbStep===0, o1: st.onbStep===1, o2: st.onbStep===2, o3: st.onbStep===3, o4: st.onbStep===4,
+      ob0: st.onbStep>=0?'#4e8a76':'#e3ddcf',
+      ob1: st.onbStep>=1?'#4e8a76':'#e3ddcf',
+      ob2: st.onbStep>=2?'#4e8a76':'#e3ddcf',
+      ob3: st.onbStep>=3?'#4e8a76':'#e3ddcf',
+      ob4: st.onbStep>=4?'#4e8a76':'#e3ddcf',
+      obNext: ()=>this.obNext(),
+      obBack: ()=>this.obBack(),
+      obNextLabel: st.onbStep>=4 ? 'Begin memorising' : 'Continue',
+
+      pickGoalNew: ()=>this.setState({goal:'new'}),
+      pickGoalRev: ()=>this.setState({goal:'revision'}),
+      pickGoalBoth: ()=>this.setState({goal:'both'}),
+      goalNew: pick(st.goal,'new'), goalRev: pick(st.goal,'revision'), goalBoth: pick(st.goal,'both'),
+
+      rtSurahFn: ()=>this.setState({rangeType:'surah'}),
+      rtJuzFn: ()=>this.setState({rangeType:'juz'}),
+      rtPageFn: ()=>this.setState({rangeType:'page'}),
+      rtAyahFn: ()=>this.setState({rangeType:'ayah'}),
+      rtSurah: pick(st.rangeType,'surah'), rtJuz: pick(st.rangeType,'juz'), rtPage: pick(st.rangeType,'page'), rtAyah: pick(st.rangeType,'ayah'),
+
+      ayahFrom: st.ayahFrom, ayahTo: st.ayahTo,
+      incFrom: ()=>this.incFrom(), decFrom: ()=>this.decFrom(), incTo: ()=>this.incTo(), decTo: ()=>this.decTo(),
+      rangeCount, rangeDays: Math.max(1, Math.ceil(rangeCount/st.perDay)), perDay: st.perDay,
+
+      ordSeqFn: ()=>this.setState({ordering:'sequential'}),
+      ordDailyFn: ()=>this.setState({ordering:'daily'}),
+      ordSeq: pick(st.ordering,'sequential'), ordDaily: pick(st.ordering,'daily'),
+
+      dMon:()=>this.toggleDay('Mon'), dTue:()=>this.toggleDay('Tue'), dWed:()=>this.toggleDay('Wed'), dThu:()=>this.toggleDay('Thu'), dFri:()=>this.toggleDay('Fri'), dSat:()=>this.toggleDay('Sat'), dSun:()=>this.toggleDay('Sun'),
+      dayMon:dayStyle(st.days.Mon), dayTue:dayStyle(st.days.Tue), dayWed:dayStyle(st.days.Wed), dayThu:dayStyle(st.days.Thu), dayFri:dayStyle(st.days.Fri), daySat:dayStyle(st.days.Sat), daySun:dayStyle(st.days.Sun),
+
+      // frequency
+      f15:()=>this.setState({freq:'15 min'}), f30:()=>this.setState({freq:'30 min'}), fhr:()=>this.setState({freq:'hourly'}), fcustom:()=>this.setState({freq:'custom'}),
+      freq15:pick(st.freq,'15 min'), freq30:pick(st.freq,'30 min'), freqHour:pick(st.freq,'hourly'), freqCustom:pick(st.freq,'custom'),
+
+      // prompt type
+      ptAyahFn:()=>this.setState({promptType:'ayah'}), ptTransFn:()=>this.setState({promptType:'trans'}), ptPageFn:()=>this.setState({promptType:'page'}), ptWeakFn:()=>this.setState({promptType:'weak'}),
+      ptAyahMark:mark(st.promptType==='ayah'), ptTransMark:mark(st.promptType==='trans'), ptPageMark:mark(st.promptType==='page'), ptWeakMark:mark(st.promptType==='weak'),
+
+      // intensity
+      inLight:()=>this.setState({intensity:'light'}), inBalanced:()=>this.setState({intensity:'balanced'}), inIntense:()=>this.setState({intensity:'intense'}),
+      intLight:pick(st.intensity,'light'), intBalanced:pick(st.intensity,'balanced'), intIntense:pick(st.intensity,'intense'),
+
+      // toggles
+      tgHours:()=>this.setState(s=>({hoursOn:!s.hoursOn})), tgSound:()=>this.setState(s=>({soundOn:!s.soundOn})),
+      hoursBg: st.hoursOn?'#4e8a76':'#d8d2c4', hoursPos: st.hoursOn?'23px':'3px',
+      soundBg: st.soundOn?'#4e8a76':'#d8d2c4', soundPos: st.soundOn?'23px':'3px',
+      tgSabaq:()=>this.setState(s=>({sabaqOn:!s.sabaqOn})), tgWird:()=>this.setState(s=>({wirdOn:!s.wirdOn})), tgWeak:()=>this.setState(s=>({weakOn:!s.weakOn})),
+      sabaqBg: st.sabaqOn?'#4e8a76':'#d8d2c4', sabaqPos: st.sabaqOn?'23px':'3px',
+      wirdBg: st.wirdOn?'#4e8a76':'#d8d2c4', wirdPos: st.wirdOn?'23px':'3px',
+      weakBg: st.weakOn?'#4e8a76':'#d8d2c4', weakPos: st.weakOn?'23px':'3px',
+      sf15:()=>this.setState({sabaqFreq:'15 min'}), sf30:()=>this.setState({sabaqFreq:'30 min'}), sfhr:()=>this.setState({sabaqFreq:'hourly'}),
+      sFreq15:pick(st.sabaqFreq,'15 min'), sFreq30:pick(st.sabaqFreq,'30 min'), sFreqHr:pick(st.sabaqFreq,'hourly'),
+      wfhr:()=>this.setState({wirdFreq:'hourly'}), wf2:()=>this.setState({wirdFreq:'2× day'}), wfday:()=>this.setState({wirdFreq:'daily'}),
+      wFreqHr:pick(st.wirdFreq,'hourly'), wFreq2:pick(st.wirdFreq,'2× day'), wFreqDay:pick(st.wirdFreq,'daily'),
+
+      // session
+      sessionRunning: st.sessionPhase==='running',
+      sessionDone: st.sessionPhase==='done',
+      sessionMode: mode,
+      isAyahMode: !isRev,
+      isFlow: isRev,
+      cardRef: this.cardRef,
+      cardNo: Math.min(st.cardIndex+1, deck.length),
+      cardTotal: deck.length,
+      cardNum: isRev ? card.start : card.num,
+      cardPrompt: isRev ? '' : card.prompt,
+      cardFull: isRev ? '' : card.full,
+      cardTrans: isRev ? '' : card.tr,
+      flowLabel: isRev ? card.label : '',
+      flowStartText: (isRev && card.passage) ? card.passage[0].text : '',
+      flowPassage: (isRev && card.passage) ? card.passage.map(a=>({num:a.num, text:a.text, tapStuck:()=>this.markStuckAt(a.num)})) : [],
+      modeChip: mode==='new' ? 'Recite from here' : mode==='weak' ? 'Repeat — you slipped here' : 'Wird · start from here',
+      modeChipBg: mode==='weak' ? 'background:#fbf2e2;color:#a87b25' : 'background:#eef5f1;color:#2f5d4f',
+      modeHint: mode==='new' ? 'Recite this āyah, then continue to the next' : mode==='weak' ? 'You marked this shaky before — lock it in' : '',
+      revealed: st.revealed,
+      notRevealed: !st.revealed,
+      showRevSheet: isRev && st.revealed,
+      progPct: Math.round(((st.cardIndex)/(deck.length))*100)+'%',
+      onDown:(e)=>this.onDown(e), onMove:(e)=>this.onMove(e), onUp:(e)=>this.onUp(e), onTap:()=>this.tap(),
+      markSolid:(e)=>{if(e&&e.stopPropagation)e.stopPropagation();this.mark('solid');},
+      markShaky:(e)=>{if(e&&e.stopPropagation)e.stopPropagation();this.mark('shaky');},
+      markForgot:(e)=>{if(e&&e.stopPropagation)e.stopPropagation();this.mark('forgot');},
+      revFinished:(e)=>{if(e&&e.stopPropagation)e.stopPropagation();this._moved=true;this.markRev('finished');},
+      revReveal:(e)=>this.revReveal(e),
+      playAudio:(e)=>this.playAudio(e),
+      startSession:()=>this.startSession(mode),
+      goModes:()=>this.goModes(),
+      startNew:()=>this.startSession('new'),
+      startRevision:()=>this.startSession('revision'),
+      startWeak:()=>this.startSession('weak'),
+      newDeckCount: this.newDeck.length,
+      weakDeckCount: this.weakDeck.length,
+      revFlowCount: this.revisionFlows.length,
+      doneTitle: mode==='new' ? 'Sabaq locked in' : mode==='weak' ? 'Weak spots revisited' : 'Wird complete',
+      sumALabel: isRev?'Finished':'Solid', sumAVal: isRev ? vals.filter(v=>v==='finished').length : vals.filter(v=>v==='solid').length,
+      sumBLabel: isRev?'Got stuck':'Shaky', sumBVal: isRev ? vals.filter(v=>typeof v==='string'&&v.indexOf('stuck@')===0).length : vals.filter(v=>v==='shaky').length,
+      sumCLabel: isRev?'Sections':'Forgot', sumCVal: isRev ? deck.length : vals.filter(v=>v==='forgot').length,
+      sumCColor: isRev ? '#7a7e76' : '#c2483f',
+      streakNow: 15,
+
+      // board
+      bdFriendsFn:()=>this.setState({boardTab:'friends'}), bdClassFn:()=>this.setState({boardTab:'class'}),
+      bdFriends: st.boardTab==='friends'?'background:#0f3b30;color:#fff':'background:#fff;color:#6b675c',
+      bdClass: st.boardTab==='class'?'background:#0f3b30;color:#fff':'background:#fff;color:#6b675c',
+      board
+    };
+  }
+}
+</script>
+</body>
+</html>
