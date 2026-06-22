@@ -55,12 +55,10 @@ export type AppState = {
   revisionRanges: SurahRange[];
   activeStartHour: number;
   activeEndHour: number;
-  intensity: "light" | "balanced" | "intense";
   hoursOn: boolean;
   soundOn: boolean;
   sabaqOn: boolean;
   revisionOn: boolean;
-  weakOn: boolean;
   sabaqFreq: string;
   revisionFreq: string;
   sabaqDays: Days;
@@ -72,12 +70,18 @@ export type AppState = {
   cardIndex: number;
   revealed: boolean;
   revisionReadAyah: number;
+  revisionResumeAyah: number;
+  revisionProgressIndex: number;
+  revisionProgressAyah: number;
   sessionPhase: "idle" | "running" | "done";
   results: Record<string, ResultStatus>;
   notificationsScheduled: number;
   notificationPermission: string;
+  notificationAutoplaySurah: number;
+  notificationAutoplayAyah: number;
   communityMode: CommunityMode;
   reviewHistory: ReviewRecord[];
+  reciterId: string;
 };
 
 export const weekdays: Days = { Mon: true, Tue: true, Wed: true, Thu: true, Fri: true, Sat: false, Sun: false };
@@ -111,12 +115,10 @@ export const initialState: AppState = {
   ],
   activeStartHour: 6,
   activeEndHour: 21,
-  intensity: "balanced",
   hoursOn: true,
   soundOn: true,
   sabaqOn: true,
   revisionOn: true,
-  weakOn: true,
   sabaqFreq: "30 min",
   revisionFreq: "daily",
   sabaqDays: weekdays,
@@ -128,11 +130,16 @@ export const initialState: AppState = {
   cardIndex: 0,
   revealed: false,
   revisionReadAyah: 0,
+  revisionResumeAyah: 0,
+  revisionProgressIndex: 0,
+  revisionProgressAyah: 1,
   sessionPhase: "idle",
   results: {},
   notificationsScheduled: 0,
   notificationPermission: "pending",
+  notificationAutoplaySurah: 0,
+  notificationAutoplayAyah: 0,
   communityMode: "solo",
-  reviewHistory: []
+  reviewHistory: [],
+  reciterId: "alafasy"
 };
-

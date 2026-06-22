@@ -1,4 +1,5 @@
 ﻿import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from "expo-notifications";
 import { useEffect, useState } from "react";
 import { getDeck, isRevisionFlow } from "../deck";
 import { maybeRequestNativeReviewEveryOtherDay, scheduleHifzNotifications } from "../native";
@@ -34,7 +35,6 @@ export function useHifzAppState() {
     scheduleHifzNotifications({
       sabaqOn: state.sabaqOn,
       revisionOn: state.revisionOn,
-      weakOn: state.weakOn,
       sabaqFreq: state.sabaqFreq,
       revisionFreq: state.revisionFreq,
       sabaqDays: state.sabaqDays,
@@ -46,7 +46,9 @@ export function useHifzAppState() {
       newRange: state.newRange,
       revisionRanges: state.revisionRanges,
       sabaqTargetId: state.sabaqTargetId,
-      revisionTargetId: state.revisionTargetId
+      revisionTargetId: state.revisionTargetId,
+      revisionProgressIndex: state.revisionProgressIndex,
+      revisionProgressAyah: state.revisionProgressAyah
     }).then((result) => {
       setState((current) => ({
         ...current,
@@ -58,7 +60,6 @@ export function useHifzAppState() {
     hydrated,
     state.sabaqOn,
     state.revisionOn,
-    state.weakOn,
     state.sabaqFreq,
     state.revisionFreq,
     state.sabaqDays,
@@ -70,18 +71,55 @@ export function useHifzAppState() {
     state.newRange,
     state.revisionRanges,
     state.sabaqTargetId,
-    state.revisionTargetId
+    state.revisionTargetId,
+    state.revisionProgressIndex,
+    state.revisionProgressAyah
   ]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+
+    const openNotification = (data: Record<string, unknown>) => {
+      setState((current) => routeNotificationToState(current, data));
+    };
+
+    const lastResponse = Notifications.getLastNotificationResponse();
+    if (lastResponse) {
+      openNotification(lastResponse.notification.request.content.data);
+      Notifications.clearLastNotificationResponse();
+    }
+
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      if (response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
+      openNotification(response.notification.request.content.data);
+      Notifications.clearLastNotificationResponse();
+    });
+
+    return () => subscription.remove();
+  }, [hydrated]);
 
   const patch = (next: Partial<AppState>) => setState((current) => ({ ...current, ...next }));
   const nav = (screen: Screen) => patch({ screen });
   const beginApp = () => patch({ screen: "home" });
+  const deckContext = { newRange: state.newRange, revisionRanges: state.revisionRanges, history: state.reviewHistory };
 
   const startSession = (mode: SessionMode) => {
-    patch({ screen: "session", sessionMode: mode, sessionPhase: "running", cardIndex: 0, revealed: false, revisionReadAyah: 0, results: {} });
+    const deck = getDeck(mode, deckContext);
+    const revisionIndex = Math.min(Math.max(0, state.revisionProgressIndex), Math.max(0, deck.length - 1));
+    const revisionItem = deck[revisionIndex];
+    const revisionEndAyah = isRevisionFlow(revisionItem) ? revisionItem.passage[revisionItem.passage.length - 1]?.num ?? 1 : 1;
+    const revisionAyah = Math.min(revisionEndAyah, Math.max(1, state.revisionProgressAyah || 1));
+    patch({
+      screen: "session",
+      sessionMode: mode,
+      sessionPhase: "running",
+      cardIndex: mode === "revision" ? revisionIndex : 0,
+      revealed: false,
+      revisionReadAyah: 0,
+      revisionResumeAyah: mode === "revision" ? revisionAyah : 0,
+      results: {}
+    });
   };
-
-  const deckContext = { newRange: state.newRange, revisionRanges: state.revisionRanges, history: state.reviewHistory };
 
   const surahNumberOf = (label: string) => Number(label.split("·")[0]?.trim()) || 0;
   const surahNameOf = (label: string) => label.split("·").slice(1).join("·").trim() || label;
@@ -92,7 +130,7 @@ export function useHifzAppState() {
       patch({ sessionPhase: "done" });
       return;
     }
-    patch({ cardIndex: state.cardIndex + 1, revealed: false, revisionReadAyah: 0 });
+    patch({ cardIndex: state.cardIndex + 1, revealed: false, revisionReadAyah: 0, revisionResumeAyah: 0 });
   };
 
   const markCard = (status: ResultStatus) => {
@@ -113,10 +151,16 @@ export function useHifzAppState() {
       surah: surahNum,
       ayah: ayahNum
     };
-    patch({
+    const next: Partial<AppState> = {
       results: { ...state.results, [key]: status },
       reviewHistory: [record, ...(state.reviewHistory ?? [])].slice(0, 80)
-    });
+    };
+    if (isRevisionFlow(item) && status === "finished") {
+      const nextIndex = state.cardIndex >= deck.length - 1 ? 0 : state.cardIndex + 1;
+      next.revisionProgressIndex = nextIndex;
+      next.revisionProgressAyah = 1;
+    }
+    patch(next);
     setTimeout(advance, 120);
   };
 
@@ -135,17 +179,16 @@ export function useHifzAppState() {
     patch({
       results: { ...state.results, [key]: `stuck@${ayah}` },
       reviewHistory: [record, ...(state.reviewHistory ?? [])].slice(0, 80),
-      revisionReadAyah: ayah
+      revisionReadAyah: ayah,
+      revisionResumeAyah: ayah,
+      revisionProgressIndex: state.cardIndex,
+      revisionProgressAyah: ayah
     });
   };
 
-  // Revision read mode: move forward one āyah; once past the end of the sūrah, finish the flow.
-  const readNextAyah = (surahLength: number) => {
-    if (state.revisionReadAyah >= surahLength) {
-      advance();
-      return;
-    }
-    patch({ revisionReadAyah: state.revisionReadAyah + 1 });
+  // Revision read mode: after practising the missed āyah, return to the same revision flow.
+  const resumeRevision = () => {
+    patch({ revisionReadAyah: 0, revealed: true });
   };
 
   const showTabs = ["home", "progress", "board", "profile"].includes(state.screen);
@@ -160,7 +203,71 @@ export function useHifzAppState() {
     advance,
     markCard,
     stopAtAyah,
-    readNextAyah
+    resumeRevision
   };
 }
 
+function routeNotificationToState(current: AppState, data: Record<string, unknown>): AppState {
+  const mode = parseNotificationMode(data.mode, data.screen);
+  if (!mode) return current;
+
+  const deckContext = {
+    newRange: current.newRange,
+    revisionRanges: current.revisionRanges,
+    history: current.reviewHistory
+  };
+  const deck = getDeck(mode, deckContext);
+  const surah = Number(data.surah) || 0;
+  const ayah = Number(data.ayah) || 1;
+  const payloadIndex = Number(data.cardIndex);
+  let cardIndex = Number.isFinite(payloadIndex) ? payloadIndex : 0;
+  let revisionResumeAyah = 0;
+  let revisionProgressIndex = current.revisionProgressIndex;
+  let revisionProgressAyah = current.revisionProgressAyah;
+
+  if (mode === "revision") {
+    const matched = deck.findIndex((item) => isRevisionFlow(item) && (!surah || item.surah === surah));
+    cardIndex = matched >= 0 ? matched : Math.min(Math.max(0, cardIndex), Math.max(0, deck.length - 1));
+    const item = deck[cardIndex];
+    const start = isRevisionFlow(item) ? item.start : 1;
+    revisionResumeAyah = Math.max(start, ayah);
+    revisionProgressIndex = cardIndex;
+    revisionProgressAyah = revisionResumeAyah;
+  } else {
+    const matched = deck.findIndex((item) => {
+      if (isRevisionFlow(item)) return false;
+      const cardSurah = surahNumberOf(item.surah ?? "");
+      return item.num === ayah && (!surah || cardSurah === surah);
+    });
+    cardIndex = matched >= 0 ? matched : Math.min(Math.max(0, cardIndex), Math.max(0, deck.length - 1));
+  }
+
+  return {
+    ...current,
+    screen: "session",
+    sessionMode: mode,
+    sessionPhase: "running",
+    cardIndex,
+    revealed: mode === "revision",
+    revisionReadAyah: 0,
+    revisionResumeAyah,
+    revisionProgressIndex,
+    revisionProgressAyah,
+    notificationAutoplaySurah: surah,
+    notificationAutoplayAyah: ayah,
+    results: {}
+  };
+}
+
+function parseNotificationMode(mode: unknown, screen: unknown): SessionMode | null {
+  if (mode === "new" || mode === "revision" || mode === "weak") return mode;
+  if (typeof screen === "string") {
+    const fromScreen = screen.replace("session:", "");
+    if (fromScreen === "new" || fromScreen === "revision" || fromScreen === "weak") return fromScreen;
+  }
+  return null;
+}
+
+function surahNumberOf(label: string) {
+  return Number(label.split("·")[0]?.trim()) || 0;
+}

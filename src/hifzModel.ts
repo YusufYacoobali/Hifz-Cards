@@ -205,6 +205,7 @@ function weekActivity(history: ReviewRecord[]) {
 }
 
 function freqMinutes(value: string) {
+  if (value.includes("20")) return 20;
   if (value.includes("30")) return 30;
   if (value.includes("1 hour")) return 60;
   if (value.includes("2")) return 120;
@@ -347,4 +348,3 @@ export function getNextRevisionStart() {
   if (dueWeak) return dueWeak.card.ayahNumber;
   return weakDeck[0]?.num ?? 12;
 }
-

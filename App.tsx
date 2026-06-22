@@ -2,7 +2,7 @@
 import { useFonts } from "expo-font";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -30,6 +30,7 @@ import {
 } from "./src/hifzModel";
 import { useHifzAppState } from "./src/hooks/useHifzAppState";
 import { playAyah, prefetchAyat, stopAyah } from "./src/audio";
+import { reciterById, reciters } from "./src/reciters";
 import { allSurahs, SurahInfo } from "./src/surahs";
 import { colors, heavyShadow, shadow } from "./src/theme";
 import { AppState, Days, MemorisationRange, ResultStatus, Screen, SessionMode, SurahRange } from "./src/types";
@@ -47,7 +48,7 @@ export default function App() {
 }
 
 function AppContent() {
-  const { state, showTabs, patch, nav, beginApp, startSession, markCard, stopAtAyah, readNextAyah } = useHifzAppState();
+  const { state, showTabs, patch, nav, beginApp, startSession, markCard, stopAtAyah, resumeRevision } = useHifzAppState();
   const insets = useSafeAreaInsets();
   const safe = {
     top: Math.max(insets.top, Platform.OS === "ios" ? 44 : 0),
@@ -80,7 +81,7 @@ function AppContent() {
             onStart={startSession}
             onMark={markCard}
             onStopAt={stopAtAyah}
-            onReadNext={readNextAyah}
+            onResumeRevision={resumeRevision}
           />
         )}
         {state.screen === "progress" && <ProgressScreen state={state} safeTop={safe.top} onNav={nav} onStart={startSession} />}
@@ -206,7 +207,7 @@ function NewOnboardingScreen({
               <InfoRow
                 icon="repeat-outline"
                 title="Revision"
-                text="A separate service that resurfaces what you already know, weak spots first."
+                text="A separate service that resurfaces what you already know."
               />
               <InfoRow
                 icon="albums-outline"
@@ -288,13 +289,24 @@ function NewOnboardingScreen({
               <ServiceScheduleCard
                 icon="leaf-outline"
                 title="Today's memorisation"
-                subtitle="One new āyah at a time"
+                subtitle={`${state.perDay} āyāt per day`}
                 enabled={state.sabaqOn}
                 onToggle={() => onPatch({ sabaqOn: !state.sabaqOn })}
                 frequency={state.sabaqFreq}
                 onFrequency={(sabaqFreq) => onPatch({ sabaqFreq, freq: sabaqFreq })}
                 days={state.sabaqDays}
                 onToggleDay={(day) => onPatch({ sabaqDays: { ...state.sabaqDays, [day]: !state.sabaqDays[day] } })}
+              />
+              <DailyTargetCard
+                icon="albums-outline"
+                title="Daily new target"
+                value={state.perDay}
+                unit="āyāt/day"
+                note={`Recommended: ${recommendedNewAyat(state.newRange)} āyāt/day for this sūrah`}
+                min={1}
+                max={20}
+                step={1}
+                onChange={(perDay) => onPatch({ perDay })}
               />
             </Stack>
           </View>
@@ -330,7 +342,7 @@ function NewOnboardingScreen({
               <ServiceScheduleCard
                 icon="repeat-outline"
                 title="Revision"
-                subtitle="Recite a known range in flow"
+                subtitle={`${state.revisionLoad} āyāt per day`}
                 enabled={state.revisionOn}
                 onToggle={() => onPatch({ revisionOn: !state.revisionOn })}
                 frequency={state.revisionFreq}
@@ -338,16 +350,17 @@ function NewOnboardingScreen({
                 days={state.revisionDays}
                 onToggleDay={(day) => onPatch({ revisionDays: { ...state.revisionDays, [day]: !state.revisionDays[day] } })}
               />
-              <Panel style={styles.settingRow}>
-                <View style={styles.iconTileWarn}>
-                  <Ionicons name="warning-outline" size={20} color={colors.goldDark} />
-                </View>
-                <View style={styles.flex}>
-                  <Text style={styles.cardTitle}>Prioritise weak āyāt</Text>
-                  <Text style={styles.cardSubtitle}>Shaky cards appear first inside revision reminders.</Text>
-                </View>
-                <Toggle value={state.weakOn} onPress={() => onPatch({ weakOn: !state.weakOn })} />
-              </Panel>
+              <DailyTargetCard
+                icon="repeat-outline"
+                title="Daily revision target"
+                value={state.revisionLoad}
+                unit="āyāt/day"
+                note={revisionRecommendationText(state.revisionRanges)}
+                min={5}
+                max={300}
+                step={5}
+                onChange={(revisionLoad) => onPatch({ revisionLoad })}
+              />
             </Stack>
           </View>
         )}
@@ -432,9 +445,7 @@ function NewOnboardingScreen({
                   ))}
                   <Text style={styles.summaryMeta}>
                     {state.revisionOn
-                      ? `Reminders ${state.revisionFreq} · ${activeDayCount(state.revisionDays)} days a week${
-                          state.weakOn ? " · weak spots first" : ""
-                        }`
+                      ? `Reminders ${state.revisionFreq} · ${state.revisionLoad} āyāt/day · ${activeDayCount(state.revisionDays)} days a week`
                       : "Reminders off"}
                   </Text>
                 </Panel>
@@ -497,8 +508,6 @@ function HomeScreen({
   onModes: () => void;
 }) {
   const dashboard = getDashboardStats(state);
-  const newCount = buildNewDeck(state.newRange).length;
-  const revisionSurahs = buildRevisionDeck(state.revisionRanges).length;
 
   return (
     <View style={styles.fullScreen}>
@@ -517,7 +526,7 @@ function HomeScreen({
               <View style={styles.flex}>
                 <Overline>Today</Overline>
                 <Text style={styles.cardTitle}>
-                  {state.sabaqOn ? `${newCount} new` : "New paused"} · {dashboard.weakCount} weak · {state.revisionOn ? `${revisionSurahs} to revise` : "revision off"}
+                  {state.sabaqOn ? `${state.perDay} new/day` : "New paused"} · {state.revisionOn ? `${state.revisionLoad} to revise` : "revision off"}
                 </Text>
                 <Text style={styles.cardSubtitle}>
                   New memorisation continues from {dashboard.currentSurah} {dashboard.rangeLabel}.
@@ -560,7 +569,7 @@ function HomeScreen({
           <Panel style={styles.notificationSummary}>
             <View style={styles.flex}>
               <Overline>Reminders today</Overline>
-              <Text style={styles.cardTitle}>New memorisation, revision, and weak spots</Text>
+              <Text style={styles.cardTitle}>New memorisation and revision</Text>
               <Text style={styles.cardSubtitle}>Custom nudges inside your active hours.</Text>
             </View>
             <IconButton name="notifications-outline" onPress={() => onNav("notif")} />
@@ -592,10 +601,105 @@ function NotificationsScreen({
   const togglePlanDay = (key: "sabaqDays" | "revisionDays", day: keyof Days) => {
     onPatch({ [key]: { ...state[key], [day]: !state[key][day] } } as Partial<AppState>);
   };
+  const setNewSurah = (surah: SurahInfo) => {
+    const range = makeNewRange(surah, 1);
+    onPatch({ newRange: range, sabaqTargetId: range.id, ayahFrom: 1, ayahTo: surah.ayahs, cardIndex: 0 });
+  };
+  const setNewStart = (from: number) => {
+    onPatch({
+      newRange: { ...state.newRange, from, label: newStartLabel(state.newRange.surah, from) },
+      ayahFrom: from,
+      cardIndex: 0
+    });
+  };
+  const updateRevisionRange = (id: string, fromSurah: number, toSurah: number) => {
+    const revisionRanges = state.revisionRanges.map((range) =>
+      range.id === id ? makeSurahRange(fromSurah, toSurah, id) : range
+    );
+    onPatch({ revisionRanges, revisionProgressIndex: 0, revisionProgressAyah: 1 });
+  };
+  const addRevisionRange = () => {
+    const range = makeSurahRange(1, 1, `rev-${Date.now()}`);
+    onPatch({ revisionRanges: [...state.revisionRanges, range], revisionTargetId: range.id, revisionProgressIndex: 0, revisionProgressAyah: 1 });
+  };
+  const removeRevisionRange = (id: string) => {
+    if (state.revisionRanges.length <= 1) return;
+    const revisionRanges = state.revisionRanges.filter((range) => range.id !== id);
+    onPatch({
+      revisionRanges,
+      revisionTargetId: state.revisionTargetId === id ? revisionRanges[0].id : state.revisionTargetId,
+      revisionProgressIndex: 0,
+      revisionProgressAyah: 1
+    });
+  };
 
   return (
     <ScrollView style={styles.fullScreen} contentContainerStyle={[styles.settingsContent, { paddingTop: safeTop + 8 }]} showsVerticalScrollIndicator={false}>
-      <Header title="Reminders" onBack={() => onNav("home")} />
+      <Header title="Card settings" onBack={() => onNav("home")} />
+      <Overline>Cards to practise</Overline>
+      <Panel style={styles.focusPanel}>
+        <View style={styles.rowBetween}>
+          <View style={styles.flex}>
+            <Text style={styles.cardTitle}>New memorisation</Text>
+            <Text style={styles.cardSubtitle}>{state.newRange.label}</Text>
+          </View>
+          <Arabic style={styles.focusArabic}>{state.newRange.arabic}</Arabic>
+        </View>
+        <SurahSearchList selectedNumber={surahNumberFromLabel(state.newRange.surah)} onSelect={setNewSurah} height={220} />
+        <Divider />
+        <Overline>Start from āyah</Overline>
+        <Stepper
+          value={state.newRange.from}
+          label={`of ${surahAyahCount(state.newRange.surah)}`}
+          onMinus={() => setNewStart(Math.max(1, state.newRange.from - 1))}
+          onPlus={() => setNewStart(Math.min(surahAyahCount(state.newRange.surah), state.newRange.from + 1))}
+        />
+      </Panel>
+      <DailyTargetCard
+        icon="albums-outline"
+        title="Daily new target"
+        value={state.perDay}
+        unit="āyāt/day"
+        note={`Recommended: ${recommendedNewAyat(state.newRange)} āyāt/day for this sūrah`}
+        min={1}
+        max={20}
+        step={1}
+        onChange={(perDay) => onPatch({ perDay })}
+      />
+      <Panel style={styles.revisionSettingsPanel}>
+        <View style={styles.settingRowInner}>
+          <View style={styles.iconTile}>
+            <Ionicons name="repeat-outline" size={20} color={colors.mint} />
+          </View>
+          <View style={styles.flex}>
+            <Text style={styles.cardTitle}>Revision sections</Text>
+            <Text style={styles.cardSubtitle}>{revisionRecommendationText(state.revisionRanges)}</Text>
+          </View>
+        </View>
+        <Stack>
+          {state.revisionRanges.map((range, index) => (
+            <KnownSurahRangeCard
+              key={range.id}
+              index={index}
+              range={range}
+              onChange={(fromSurah, toSurah) => updateRevisionRange(range.id, fromSurah, toSurah)}
+              onDelete={state.revisionRanges.length > 1 ? () => removeRevisionRange(range.id) : undefined}
+            />
+          ))}
+          <OutlineButton label="Add another revision section" onPress={addRevisionRange} />
+        </Stack>
+      </Panel>
+      <DailyTargetCard
+        icon="repeat-outline"
+        title="Daily revision target"
+        value={state.revisionLoad}
+        unit="āyāt/day"
+        note={revisionRecommendationText(state.revisionRanges)}
+        min={5}
+        max={300}
+        step={5}
+        onChange={(revisionLoad) => onPatch({ revisionLoad })}
+      />
       <Overline>Notification types</Overline>
       <ReminderCard
         icon="leaf-outline"
@@ -626,23 +730,6 @@ function NotificationsScreen({
         targetId={state.revisionTargetId}
         targetOptions={targetOptions.filter((target) => target.id !== state.newRange.id)}
         onTarget={(revisionTargetId) => onPatch({ revisionTargetId })}
-      />
-      <Panel style={styles.settingRow}>
-        <View style={styles.iconTileWarn}>
-          <Ionicons name="warning-outline" size={20} color={colors.goldDark} />
-        </View>
-        <View style={styles.flex}>
-          <Text style={styles.cardTitle}>Include weak spots in revision</Text>
-          <Text style={styles.cardSubtitle}>Forgotten or shaky āyāt appear inside revision reminders, using the revision schedule.</Text>
-        </View>
-        <Toggle value={state.weakOn} onPress={() => onPatch({ weakOn: !state.weakOn })} />
-      </Panel>
-      <Overline style={styles.spacedOverline}>Intensity</Overline>
-      <Segmented
-        values={["light", "balanced", "intense"]}
-        labels={["Light", "Balanced", "Intense"]}
-        active={state.intensity}
-        onChange={(intensity) => onPatch({ intensity: intensity as AppState["intensity"] })}
       />
       <Panel style={styles.listPanel}>
         <SwitchRow title="Active hours only" subtitle={`${formatHour(state.activeStartHour)} - ${formatHour(state.activeEndHour)}`} value={state.hoursOn} onPress={() => onPatch({ hoursOn: !state.hoursOn })} />
@@ -675,7 +762,7 @@ function NotificationsScreen({
       </Panel>
       <Overline style={styles.spacedOverline}>How they arrive</Overline>
       <NotificationPreview type="TODAY'S MEMORISATION" title="Recite this āyah, then continue to the next ↓" ayah="أَمَّنْ هَذَا ٱلَّذِى يَرْزُقُكُمْ" />
-      <NotificationPreview type="WIRD" title="Start from this āyah. How far can you continue? ↓" ayah="تَبَارَكَ ٱلَّذِى بِيَدِهِ ٱلْمُلْكُ" />
+      <NotificationPreview type="REVISION" title="Start from this āyah. How far can you continue? ↓" ayah="تَبَارَكَ ٱلَّذِى بِيَدِهِ ٱلْمُلْكُ" />
     </ScrollView>
   );
 }
@@ -723,7 +810,7 @@ function SessionScreen({
   onStart,
   onMark,
   onStopAt,
-  onReadNext
+  onResumeRevision
 }: {
   state: AppState;
   safeTop: number;
@@ -733,7 +820,7 @@ function SessionScreen({
   onStart: (mode: SessionMode) => void;
   onMark: (status: ResultStatus) => void;
   onStopAt: (surah: number, ayah: number, label: string) => void;
-  onReadNext: (surahLength: number) => void;
+  onResumeRevision: () => void;
 }) {
   const deck = getDeck(state.sessionMode, { newRange: state.newRange, revisionRanges: state.revisionRanges, history: state.reviewHistory });
   const item = deck[Math.min(state.cardIndex, deck.length - 1)];
@@ -742,10 +829,23 @@ function SessionScreen({
   const translateX = useRef(new Animated.Value(0)).current;
   const isRev = isRevisionFlow(item);
   const reading = isRev && state.revisionReadAyah > 0;
-  const surahLength = isRev ? item.passage.length : 0;
   const readCard = reading ? ayahCard(item.surah ?? 0, state.revisionReadAyah) : null;
   const currentSurahNumber = isRev ? item.surah ?? 0 : surahNumberFromLabel(item.surah ?? "67");
   const currentAyahNumber = reading ? state.revisionReadAyah : isRev ? item.start : item.num;
+  const revisionEndAyah = isRev ? item.passage[item.passage.length - 1]?.num ?? item.start : 1;
+  const revisionStartAyah = isRev ? Math.min(revisionEndAyah, Math.max(item.start, state.revisionResumeAyah || item.start)) : 1;
+
+  const navigateMemoriseCard = (direction: 1 | -1) => {
+    if (direction > 0) {
+      if (state.cardIndex >= total - 1) {
+        onPatch({ sessionPhase: "done" });
+        return;
+      }
+      onPatch({ cardIndex: state.cardIndex + 1, revealed: false, revisionReadAyah: 0, revisionResumeAyah: 0 });
+      return;
+    }
+    onPatch({ cardIndex: Math.max(0, state.cardIndex - 1), revealed: false, revisionReadAyah: 0, revisionResumeAyah: 0 });
+  };
 
   // Warm the offline audio cache for memorisation/weak decks (small, fixed-size sessions).
   useEffect(() => {
@@ -753,18 +853,30 @@ function SessionScreen({
     const ayat = deck
       .filter((entry): entry is HifzCard => !isRevisionFlow(entry))
       .map((card) => ({ surah: surahNumberFromLabel(card.surah ?? "67"), ayah: card.num }));
-    prefetchAyat(ayat);
+    prefetchAyat(ayat, state.reciterId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.sessionMode, state.sessionPhase]);
+  }, [state.sessionMode, state.sessionPhase, state.reciterId]);
 
   // Stop any playback when leaving the card.
   useEffect(() => () => stopAyah(), []);
 
   useEffect(() => {
+    if (state.sessionPhase !== "running" || !state.notificationAutoplaySurah || !state.notificationAutoplayAyah) return;
+    playAyah(state.notificationAutoplaySurah, state.notificationAutoplayAyah, state.reciterId);
+    onPatch({ notificationAutoplaySurah: 0, notificationAutoplayAyah: 0 });
+  }, [
+    state.sessionPhase,
+    state.notificationAutoplaySurah,
+    state.notificationAutoplayAyah,
+    state.reciterId,
+    onPatch
+  ]);
+
+  useEffect(() => {
     translateX.setValue(0);
   }, [state.cardIndex, translateX]);
 
-  // Swipe marks cards in memorisation/weak mode; in revision it's a gimmick that always springs back.
+  // Swipe navigates memorisation/weak cards; revision keeps swipes disabled because it has a flow UI.
   const responder = useMemo(
     () =>
       PanResponder.create({
@@ -773,18 +885,22 @@ function SessionScreen({
         onPanResponderMove: (_, gesture) => translateX.setValue(gesture.dx),
         onPanResponderRelease: (_, gesture) => {
           if (!isRev && Math.abs(gesture.dx) > 120) {
-            const swipeResult: ResultStatus = gesture.dx > 0 ? "solid" : "forgot";
+            const direction = gesture.dx > 0 ? 1 : -1;
+            if (direction < 0 && state.cardIndex <= 0) {
+              Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+              return;
+            }
             Animated.timing(translateX, {
               toValue: gesture.dx > 0 ? 520 : -520,
               duration: 220,
               useNativeDriver: true
-            }).start(() => onMark(swipeResult));
+            }).start(() => navigateMemoriseCard(direction));
           } else {
             Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
           }
         }
       }),
-    [isRev, onMark, translateX]
+    [isRev, navigateMemoriseCard, state.cardIndex, translateX]
   );
 
   if (state.sessionPhase === "done") {
@@ -840,7 +956,7 @@ function SessionScreen({
       <View style={styles.sessionProgressTrack}>
         <LinearGradient colors={[colors.mint, "#6aa991"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.sessionProgress, { width: progress }]} />
       </View>
-      <View style={styles.cardStack}>
+      <View style={[styles.cardStack, !isRev && styles.memoriseCardStack]}>
         <View style={[styles.behindCard, styles.behindCardOne]} />
         <View style={[styles.behindCard, styles.behindCardTwo]} />
         <Animated.View
@@ -867,13 +983,14 @@ function SessionScreen({
                 ? "REPEAT · YOU SLIPPED HERE"
                 : reading
                   ? "CARRY ON FROM HERE"
-                  : "WIRD · RECITE FROM MEMORY"}
+                  : "REVISION · RECITE FROM MEMORY"}
           </Text>
           {reading && readCard ? (
-            <AyahCard card={readCard} note={`You stopped here — carry on to the end of the sūrah (āyah ${surahLength}).`} />
+            <AyahCard card={readCard} note="Practise this āyah, then continue the revision from here." />
           ) : isRev ? (
             <RevisionCard
               item={item}
+              startAt={revisionStartAyah}
               revealed={state.revealed}
               onReveal={() => onPatch({ revealed: true })}
               onStuck={(ayah) => onStopAt(item.surah ?? 0, ayah, item.label)}
@@ -882,7 +999,7 @@ function SessionScreen({
             <AyahCard card={item} />
           )}
           {(!isRev || reading) && (
-            <Pressable style={styles.audioButton} onPress={() => playAyah(currentSurahNumber, currentAyahNumber)}>
+            <Pressable style={styles.audioButton} onPress={() => playAyah(currentSurahNumber, currentAyahNumber, state.reciterId)}>
               <View style={styles.audioIcon}>
                 <Ionicons name="play" size={12} color="#fff" />
               </View>
@@ -900,9 +1017,9 @@ function SessionScreen({
       ) : reading ? (
         <View style={[styles.markRow, { bottom: safeBottom + 24 }]}>
           <PrimaryButton
-            label={state.revisionReadAyah >= surahLength ? "Finished the sūrah" : "Next āyah"}
-            icon={state.revisionReadAyah >= surahLength ? "checkmark" : "arrow-down"}
-            onPress={() => onReadNext(surahLength)}
+            label={`Continue from āyah ${state.revisionReadAyah}`}
+            icon="return-down-forward"
+            onPress={onResumeRevision}
             style={styles.flex}
           />
         </View>
@@ -1119,6 +1236,8 @@ function ProfileScreen({
   const progress = getProgressStats(state.reviewHistory);
   const history = state.reviewHistory ?? [];
   const communityLabel = state.communityMode === "class" ? "Class circle" : state.communityMode === "friends" ? "Friends circle" : "Private mode";
+  const selectedReciter = reciterById(state.reciterId);
+  const [reciterDropdownOpen, setReciterDropdownOpen] = useState(false);
   const clearHistory = () => {
     Alert.alert("Clear review journal?", "This removes saved local session marks on this device.", [
       { text: "Cancel", style: "cancel" },
@@ -1177,6 +1296,40 @@ function ProfileScreen({
           ))}
         </Panel>
         <Overline style={styles.spacedOverline}>Settings</Overline>
+        <Panel style={styles.reciterPanel}>
+          <Pressable style={styles.settingRowInner} onPress={() => setReciterDropdownOpen((open) => !open)}>
+            <View style={styles.iconTile}>
+              <Ionicons name="mic-outline" size={20} color={colors.mint} />
+            </View>
+            <View style={styles.flex}>
+              <Text style={styles.cardTitle}>Reciter</Text>
+              <Text style={styles.cardSubtitle}>{selectedReciter.name} · used for every playback button</Text>
+            </View>
+            <Ionicons name={reciterDropdownOpen ? "chevron-up" : "chevron-down"} size={18} color={colors.faint} />
+          </Pressable>
+          {reciterDropdownOpen && (
+            <View style={styles.reciterDropdown}>
+              {reciters.map((reciter, index) => {
+                const selected = state.reciterId === reciter.id;
+                return (
+                  <Pressable
+                    key={reciter.id}
+                    style={[styles.reciterOption, selected && styles.reciterOptionSelected, index < reciters.length - 1 && styles.reciterOptionBorder]}
+                    onPress={() => {
+                      onPatch({ reciterId: reciter.id });
+                      setReciterDropdownOpen(false);
+                    }}
+                  >
+                    <View style={styles.flex}>
+                      <Text style={[styles.reciterName, selected && styles.reciterTextSelected]}>{reciter.name}</Text>
+                    </View>
+                    {selected && <Ionicons name="checkmark-circle" size={18} color={colors.gold} />}
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+        </Panel>
         <Panel style={styles.listPanel}>
           <SettingsRow icon="notifications-outline" label="Reminder preferences" onPress={() => onNav("notif")} />
           <Divider />
@@ -1241,25 +1394,70 @@ function AyahCard({ card, note }: { card: HifzCard; note?: string }) {
   );
 }
 
-function RevisionCard({ item, revealed, onReveal, onStuck }: { item: RevisionFlow; revealed: boolean; onReveal: () => void; onStuck: (ayah: number) => void }) {
+function RevisionCard({
+  item,
+  startAt,
+  revealed,
+  onReveal,
+  onStuck
+}: {
+  item: RevisionFlow;
+  startAt: number;
+  revealed: boolean;
+  onReveal: () => void;
+  onStuck: (ayah: number) => void;
+}) {
+  const [showFromJuz, setShowFromJuz] = useState(0);
+  const passage = item.passage.filter((ayah) => ayah.num >= startAt);
+  const availableJuz = Array.from(new Set(passage.map((ayah) => juzForLocation(item.surah ?? 1, ayah.num))));
+  const visiblePassage = showFromJuz ? passage.filter((ayah) => juzForLocation(item.surah ?? 1, ayah.num) >= showFromJuz) : passage;
+  const firstAyah = visiblePassage[0] ?? passage[0] ?? item.passage[0];
+  const currentJuz = juzForLocation(item.surah ?? 1, startAt);
   return (
     <View style={styles.revisionBody}>
-      <Text style={styles.sessionMeta}>Sūrah {item.label} · {item.passage.length} āyāt</Text>
+      <Text style={styles.sessionMeta}>Sūrah {item.label} · from āyah {startAt}</Text>
       {!revealed ? (
         <Pressable style={styles.revisionStart} onPress={onReveal}>
-          <Arabic style={styles.promptArabic}>{item.passage[0]?.text}</Arabic>
+          <Arabic style={styles.promptArabic}>{firstAyah?.text}</Arabic>
           <Text style={styles.revisionPill}>Recite from memory — how far can you go?</Text>
         </Pressable>
       ) : (
         <>
-          <Text style={styles.stuckHint}>Tap the āyah you got stuck at ↓</Text>
-          <ScrollView showsVerticalScrollIndicator style={styles.revisionScroll} contentContainerStyle={styles.revisionScrollBody}>
-            {item.passage.map((ayah) => (
-              <Pressable key={ayah.num} style={styles.passageRow} onPress={() => onStuck(ayah.num)}>
-                <Text style={styles.ayahBadge}>{ayah.num}</Text>
-                <Arabic style={styles.passageText}>{ayah.text}</Arabic>
+          <Text style={styles.stuckHint}>Tap the next āyah you get stuck at ↓</Text>
+          <View style={styles.juzJumpPanel}>
+            <Text style={styles.juzHint}>Current place: Juz {currentJuz}. Hide earlier Juz to jump faster.</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.juzChipRail}>
+              <Pressable style={[styles.juzChip, showFromJuz === 0 && styles.juzChipSelected]} onPress={() => setShowFromJuz(0)}>
+                <Text style={[styles.juzChipText, showFromJuz === 0 && styles.juzChipTextSelected]}>Show all</Text>
               </Pressable>
-            ))}
+              {availableJuz.map((juz) => (
+                <Pressable key={juz} style={[styles.juzChip, showFromJuz === juz && styles.juzChipSelected]} onPress={() => setShowFromJuz(juz)}>
+                  <Text style={[styles.juzChipText, showFromJuz === juz && styles.juzChipTextSelected]}>Juz {juz}+</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+          <ScrollView showsVerticalScrollIndicator style={styles.revisionScroll} contentContainerStyle={styles.revisionScrollBody}>
+            {visiblePassage.map((ayah, index) => {
+              const juz = juzForLocation(item.surah ?? 1, ayah.num);
+              const previous = visiblePassage[index - 1];
+              const showBreak = index === 0 || (previous && juzForLocation(item.surah ?? 1, previous.num) !== juz);
+              return (
+                <React.Fragment key={ayah.num}>
+                  {showBreak && (
+                    <View style={styles.juzDivider}>
+                      <View style={styles.juzDividerLine} />
+                      <Text style={styles.juzDividerText}>Juz {juz}</Text>
+                      <View style={styles.juzDividerLine} />
+                    </View>
+                  )}
+                  <Pressable style={styles.passageRow} onPress={() => onStuck(ayah.num)}>
+                    <Text style={styles.ayahBadge}>{ayah.num}</Text>
+                    <Arabic style={styles.passageText}>{ayah.text}</Arabic>
+                  </Pressable>
+                </React.Fragment>
+              );
+            })}
           </ScrollView>
         </>
       )}
@@ -1452,6 +1650,50 @@ function ServiceScheduleCard({
   );
 }
 
+function DailyTargetCard({
+  icon,
+  title,
+  value,
+  unit,
+  note,
+  min,
+  max,
+  step,
+  onChange
+}: {
+  icon: string;
+  title: string;
+  value: number;
+  unit: string;
+  note: string;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <Panel style={styles.dailyTargetCard}>
+      <View style={styles.settingRowInner}>
+        <View style={styles.iconTile}>
+          <Ionicons name={icon as never} size={20} color={colors.mint} />
+        </View>
+        <View style={styles.flex}>
+          <Text style={styles.cardTitle}>{title}</Text>
+          <Text style={styles.cardSubtitle}>{note}</Text>
+        </View>
+      </View>
+      <View style={styles.dailyTargetControls}>
+        <Stepper
+          value={value}
+          label={unit}
+          onMinus={() => onChange(Math.max(min, value - step))}
+          onPlus={() => onChange(Math.min(max, value + step))}
+        />
+      </View>
+    </Panel>
+  );
+}
+
 function Segmented({
   values,
   labels,
@@ -1539,6 +1781,84 @@ function makeSurahRange(fromSurah: number, toSurah: number, id: string): SurahRa
 
 function activeDayCount(days: Days) {
   return (Object.values(days) as boolean[]).filter(Boolean).length;
+}
+
+function rangeAyahCount(range: SurahRange) {
+  const from = Math.min(range.fromSurah, range.toSurah);
+  const to = Math.max(range.fromSurah, range.toSurah);
+  return allSurahs
+    .filter((surah) => surah.number >= from && surah.number <= to)
+    .reduce((total, surah) => total + surah.ayahs, 0);
+}
+
+function knownRevisionAyahs(ranges: SurahRange[]) {
+  return ranges.reduce((total, range) => total + rangeAyahCount(range), 0);
+}
+
+function estimatedJuzFromAyahs(ayahs: number) {
+  return ayahs / (6236 / 30);
+}
+
+function recommendedRevisionAyat(ranges: SurahRange[]) {
+  const ayahs = knownRevisionAyahs(ranges);
+  if (!ayahs) return 15;
+  return Math.max(5, Math.round(ayahs / 7 / 5) * 5);
+}
+
+function revisionRecommendationText(ranges: SurahRange[]) {
+  const ayahs = knownRevisionAyahs(ranges);
+  const juz = estimatedJuzFromAyahs(ayahs);
+  const dailyJuz = Math.max(0.25, juz / 7);
+  const roundedDailyJuz = dailyJuz >= 1 ? Math.round(dailyJuz * 2) / 2 : Math.round(dailyJuz * 4) / 4;
+  return `Recommended: about ${roundedDailyJuz} juz/day (${recommendedRevisionAyat(ranges)} āyāt/day) for ${Math.max(1, Math.round(juz))} juz known`;
+}
+
+function recommendedNewAyat(range: MemorisationRange) {
+  const remaining = Math.max(1, (surahAyahCount(range.surah) || range.to) - range.from + 1);
+  if (remaining <= 20) return 2;
+  if (remaining <= 80) return 3;
+  return 5;
+}
+
+const juzStarts = [
+  [1, 1],
+  [2, 142],
+  [2, 253],
+  [3, 93],
+  [4, 24],
+  [4, 148],
+  [5, 82],
+  [6, 111],
+  [7, 88],
+  [8, 41],
+  [9, 93],
+  [11, 6],
+  [12, 53],
+  [15, 1],
+  [17, 1],
+  [18, 75],
+  [21, 1],
+  [23, 1],
+  [25, 21],
+  [27, 56],
+  [29, 46],
+  [33, 31],
+  [36, 28],
+  [39, 32],
+  [41, 47],
+  [46, 1],
+  [51, 31],
+  [58, 1],
+  [67, 1],
+  [78, 1]
+] as const;
+
+function juzForLocation(surah: number, ayah: number) {
+  let current = 1;
+  juzStarts.forEach(([startSurah, startAyah], index) => {
+    if (surah > startSurah || (surah === startSurah && ayah >= startAyah)) current = index + 1;
+  });
+  return current;
 }
 
 function SurahSearchList({
@@ -1683,7 +2003,7 @@ function KnownSurahRangeCard({
   );
 }
 
-const frequencyOptions = ["30 min", "1 hour", "2 hours", "3 hours", "6 hours", "daily"];
+const frequencyOptions = ["20 min", "30 min", "1 hour", "2 hours", "3 hours", "6 hours", "daily"];
 
 function FrequencyScroller({ active, onChange }: { active: string; onChange: (value: string) => void }) {
   return (
@@ -1880,10 +2200,16 @@ function ModeCard({
 }
 
 function MarkButton({ label, sub, color, onPress, filled }: { label: string; sub: string; color: string; onPress: () => void; filled?: boolean }) {
+  const icon = label === "Solid" ? "checkmark-circle" : label === "Shaky" ? "warning" : "close-circle";
   return (
-    <Pressable style={[styles.markButton, filled && styles.markFilled]} onPress={onPress}>
-      <Text style={[styles.markLabel, { color }]}>{label}</Text>
-      <Text style={[styles.markSub, filled && { color: "#cfe6dd" }]}>{sub}</Text>
+    <Pressable style={[styles.markButton, filled && styles.markFilled, { borderColor: filled ? colors.mint : color }]} onPress={onPress}>
+      <View style={[styles.markIcon, { backgroundColor: filled ? "rgba(255,255,255,.18)" : `${color}1f` }]}>
+        <Ionicons name={icon as never} size={18} color={filled ? "#fff" : color} />
+      </View>
+      <View style={styles.markCopy}>
+        <Text style={[styles.markLabel, { color }]}>{label}</Text>
+        <Text style={[styles.markSub, filled && { color: "#d9eee7" }]}>{sub}</Text>
+      </View>
     </Pressable>
   );
 }
@@ -2846,6 +3172,15 @@ const styles = StyleSheet.create({
   reminderCard: {
     gap: 12
   },
+  dailyTargetCard: {
+    gap: 12
+  },
+  dailyTargetControls: {
+    alignItems: "flex-start"
+  },
+  revisionSettingsPanel: {
+    gap: 12
+  },
   settingRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -2883,6 +3218,40 @@ const styles = StyleSheet.create({
   },
   listPanel: {
     paddingVertical: 0
+  },
+  reciterPanel: {
+    gap: 12
+  },
+  reciterDropdown: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: "#fffdf8",
+    overflow: "hidden"
+  },
+  reciterOption: {
+    minHeight: 58,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 13
+  },
+  reciterOptionSelected: {
+    backgroundColor: colors.green
+  },
+  reciterOptionBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line
+  },
+  reciterName: {
+    color: colors.text,
+    fontSize: 12.5,
+    fontWeight: "900",
+    lineHeight: 17
+  },
+  reciterTextSelected: {
+    color: "#fff"
   },
   switchRow: {
     flexDirection: "row",
@@ -2993,6 +3362,9 @@ const styles = StyleSheet.create({
     right: 22,
     top: 130,
     bottom: 112
+  },
+  memoriseCardStack: {
+    bottom: 164
   },
   behindCard: {
     position: "absolute",
@@ -3124,28 +3496,48 @@ const styles = StyleSheet.create({
     right: 22,
     bottom: 30,
     flexDirection: "row",
-    gap: 10
+    gap: 9
   },
   markButton: {
     flex: 1,
-    height: 54,
-    borderRadius: 16,
-    backgroundColor: colors.card,
+    minWidth: 0,
+    minHeight: 72,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    backgroundColor: "#fffdf8",
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 7,
     ...shadow
   },
   markFilled: {
     backgroundColor: colors.mint
   },
+  markIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6
+  },
+  markCopy: {
+    alignItems: "center",
+    minWidth: 0
+  },
   markLabel: {
     fontSize: 13,
-    fontWeight: "900"
+    fontWeight: "900",
+    lineHeight: 17,
+    textAlign: "center"
   },
   markSub: {
     fontSize: 10,
     color: colors.muted,
-    marginTop: 2
+    marginTop: 2,
+    lineHeight: 13,
+    textAlign: "center"
   },
   revisionBody: {
     flex: 1,
@@ -3182,6 +3574,62 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     textAlign: "center",
     marginBottom: 8
+  },
+  juzJumpPanel: {
+    width: "100%",
+    backgroundColor: colors.paper,
+    borderRadius: 14,
+    padding: 10,
+    marginBottom: 8,
+    gap: 8
+  },
+  juzHint: {
+    color: colors.muted,
+    fontSize: 11.5,
+    fontWeight: "700",
+    lineHeight: 16,
+    textAlign: "center"
+  },
+  juzChipRail: {
+    gap: 8,
+    paddingHorizontal: 2
+  },
+  juzChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.lineDark,
+    backgroundColor: "#fffdf8",
+    paddingVertical: 7,
+    paddingHorizontal: 12
+  },
+  juzChipSelected: {
+    backgroundColor: colors.green,
+    borderColor: colors.green
+  },
+  juzChipText: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: "900"
+  },
+  juzChipTextSelected: {
+    color: "#fff"
+  },
+  juzDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 2
+  },
+  juzDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.line
+  },
+  juzDividerText: {
+    color: colors.goldDark,
+    fontSize: 11,
+    fontWeight: "900"
   },
   passageRow: {
     flexDirection: "row",
@@ -3759,4 +4207,3 @@ const styles = StyleSheet.create({
     display: Platform.OS === "android" ? "none" : "flex"
   }
 });
-
