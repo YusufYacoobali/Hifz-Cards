@@ -5,7 +5,8 @@
     "scheme": "hifzcards",
     "version": "1.0.0",
     "orientation": "portrait",
-    "jsEngine": "jsc",
+    "jsEngine": "hermes",
+    "newArchEnabled": false,
     "userInterfaceStyle": "light",
     "backgroundColor": "#f6f2ea",
     "ios": {
