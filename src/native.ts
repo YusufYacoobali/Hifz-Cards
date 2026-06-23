@@ -1,10 +1,13 @@
 ﻿import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import * as StoreReview from "expo-store-review";
-import { Platform } from "react-native";
+import { AppState as RNAppState, Platform } from "react-native";
 import { buildNewDeck, buildRevisionDeck } from "./deck";
 import { firstWords } from "./quran";
 import { ActiveHoursMode, ArabicScript, DailyActiveHours, Days, MemorisationRange, SessionMode, SurahRange } from "./types";
+
+// Minutes after the user leaves the app before the "come back" reminder fires.
+export const COMEBACK_DELAY_MIN = 20;
 
 export type ReminderSettings = {
   sabaqOn: boolean;
@@ -37,13 +40,19 @@ const REVIEW_KEY = "hifz:last-native-review";
 const NOTIFICATION_CACHE_KEY = "hifz:last-notification-plan";
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false
-  })
+  // Don't pop a banner/sound while the user is actively in the app — reminders are for when they've left.
+  handleNotification: async () => {
+    const active = RNAppState.currentState === "active";
+    return {
+      shouldShowBanner: !active,
+      shouldShowList: true,
+      shouldPlaySound: !active,
+      shouldSetBadge: false
+    };
+  }
 });
+
+const COMEBACK_ID_KEY = "hifz:comeback-id";
 
 export async function maybeRequestNativeReviewEveryOtherDay() {
   try {
@@ -170,19 +179,19 @@ function buildNotificationPlan(settings: ReminderSettings) {
             cardIndex
           });
         } else if (slot.type === "revision") {
+          // Always resume revision exactly where the user left off — never rotate to a random known sūrah.
           const revisionIndex = revisionCards.length
-            ? (settings.revisionProgressIndex + index + dayOffset) % revisionCards.length
+            ? Math.min(Math.max(0, settings.revisionProgressIndex), revisionCards.length - 1)
             : 0;
           const revision = revisionCards[revisionIndex];
-          const startAyah =
-            revision && revisionIndex === settings.revisionProgressIndex
-              ? Math.max(revision.start, settings.revisionProgressAyah || revision.start)
-              : revision?.start ?? 1;
+          const startAyah = revision
+            ? Math.max(revision.start, settings.revisionProgressAyah || revision.start)
+            : 1;
           const prompt = revision?.passage.find((ayah) => ayah.num >= startAyah) ?? revision?.passage[0];
           plan.push({
             date,
             title: "Hifz Cards · Revision",
-            body: `${revision?.label ?? "Revision"}: start from āyah ${prompt?.num ?? startAyah}. ${prompt?.text ? firstWords(prompt.text, 5) : "How far can you continue?"}`,
+            body: `${revision?.label ?? "Revision"}: continue from āyah ${prompt?.num ?? startAyah}. ${prompt?.text ? firstWords(prompt.text, 5) : "How far can you continue?"}`,
             mode: "revision",
             surah: revision?.surah ?? 1,
             ayah: prompt?.num ?? startAyah,
@@ -234,4 +243,88 @@ function frequencyMinutes(value: string) {
 
 function surahNumberOf(label: string) {
   return Number(label.split("·")[0]?.trim()) || 1;
+}
+
+// The first active moment at/after `minutes` from now, respecting active hours.
+function nextActiveDate(settings: ReminderSettings, minutes: number) {
+  const probe = new Date(Date.now() + minutes * 60 * 1000);
+  if (!settings.hoursOn) return probe;
+  const dayNames: Array<keyof Days> = ["Sun" as never, "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  for (let i = 0; i < 8; i += 1) {
+    const window = activeWindowForDay(settings, dayNames[probe.getDay()]);
+    const minute = probe.getHours() * 60 + probe.getMinutes();
+    if (minute < window.from) {
+      probe.setHours(Math.floor(window.from / 60), window.from % 60, 0, 0);
+      return probe;
+    }
+    if (minute <= window.until) return probe;
+    probe.setDate(probe.getDate() + 1);
+    probe.setHours(0, 0, 0, 0);
+  }
+  return probe;
+}
+
+function comebackContent(settings: ReminderSettings) {
+  if (settings.sabaqOn) {
+    const card = buildNewDeck(settings.newRange, settings.arabicScript)[0];
+    return {
+      title: "Hifz Cards · Pick up your sabaq",
+      body: card ? `${settings.newRange.label}: ${card.prompt}` : "Time for today's memorisation.",
+      data: {
+        mode: "new" as SessionMode,
+        screen: "session:new",
+        surah: surahNumberOf(settings.newRange.surah),
+        ayah: card?.num ?? 1,
+        cardIndex: 0,
+        autoplay: true
+      }
+    };
+  }
+  const revisionCards = buildRevisionDeck(settings.revisionRanges, settings.arabicScript);
+  const idx = Math.min(Math.max(0, settings.revisionProgressIndex), Math.max(0, revisionCards.length - 1));
+  const revision = revisionCards[idx];
+  const startAyah = revision ? Math.max(revision.start, settings.revisionProgressAyah || revision.start) : 1;
+  return {
+    title: "Hifz Cards · Time to revise",
+    body: revision ? `${revision.label}: start from āyah ${startAyah}.` : "Time to revise what you know.",
+    data: {
+      mode: "revision" as SessionMode,
+      screen: "session:revision",
+      surah: revision?.surah ?? 1,
+      ayah: startAyah,
+      cardIndex: idx,
+      autoplay: true
+    }
+  };
+}
+
+// Schedule a single reminder ~20 min after the user leaves the app (within active hours).
+export async function scheduleComebackReminder(settings: ReminderSettings, minutes = COMEBACK_DELAY_MIN) {
+  try {
+    await cancelComebackReminder();
+    if (!settings.sabaqOn && !settings.revisionOn) return;
+    const permissions = await Notifications.getPermissionsAsync();
+    if (permissions.status !== "granted") return;
+    const date = nextActiveDate(settings, minutes);
+    const { title, body, data } = comebackContent(settings);
+    const id = await Notifications.scheduleNotificationAsync({
+      content: { title, body, sound: settings.soundOn, data },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date, channelId: "hifz-cards" }
+    });
+    await AsyncStorage.setItem(COMEBACK_ID_KEY, id);
+  } catch {
+    // best effort
+  }
+}
+
+export async function cancelComebackReminder() {
+  try {
+    const id = await AsyncStorage.getItem(COMEBACK_ID_KEY);
+    if (id) {
+      await Notifications.cancelScheduledNotificationAsync(id);
+      await AsyncStorage.removeItem(COMEBACK_ID_KEY);
+    }
+  } catch {
+    // best effort
+  }
 }

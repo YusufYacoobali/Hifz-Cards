@@ -1,8 +1,15 @@
 ﻿import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AppState as RNAppState } from "react-native";
 import { getDeck, isRevisionFlow } from "../deck";
-import { maybeRequestNativeReviewEveryOtherDay, scheduleHifzNotifications } from "../native";
+import {
+  cancelComebackReminder,
+  maybeRequestNativeReviewEveryOtherDay,
+  ReminderSettings,
+  scheduleComebackReminder,
+  scheduleHifzNotifications
+} from "../native";
 import { AppState, initialState, ResultStatus, ReviewRecord, Screen, SessionMode } from "../types";
 
 const STORAGE_KEY = "hifz:app-state";
@@ -20,9 +27,15 @@ export function useHifzAppState() {
       })
       .finally(() => {
         setHydrated(true);
-        maybeRequestNativeReviewEveryOtherDay();
       });
   }, []);
+
+  // Ask for a store review after ~2 minutes of use (still gated to every other day inside the helper).
+  useEffect(() => {
+    if (!hydrated) return;
+    const timer = setTimeout(() => maybeRequestNativeReviewEveryOtherDay(), 2 * 60 * 1000);
+    return () => clearTimeout(timer);
+  }, [hydrated]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -30,40 +43,58 @@ export function useHifzAppState() {
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(persistable)).catch(() => undefined);
   }, [hydrated, state]);
 
+  const reminderSettings: ReminderSettings = {
+    sabaqOn: state.sabaqOn,
+    revisionOn: state.revisionOn,
+    sabaqFreq: state.sabaqFreq,
+    revisionFreq: state.revisionFreq,
+    sabaqDays: state.sabaqDays,
+    revisionDays: state.revisionDays,
+    activeStartHour: state.activeStartHour,
+    activeEndHour: state.activeEndHour,
+    activeHoursMode: state.activeHoursMode,
+    splitActiveHours: state.splitActiveHours,
+    weekdayStartHour: state.weekdayStartHour,
+    weekdayEndHour: state.weekdayEndHour,
+    weekendStartHour: state.weekendStartHour,
+    weekendEndHour: state.weekendEndHour,
+    dailyActiveHours: state.dailyActiveHours,
+    hoursOn: state.hoursOn,
+    soundOn: state.soundOn,
+    newRange: state.newRange,
+    revisionRanges: state.revisionRanges,
+    sabaqTargetId: state.sabaqTargetId,
+    revisionTargetId: state.revisionTargetId,
+    revisionProgressIndex: state.revisionProgressIndex,
+    revisionProgressAyah: state.revisionProgressAyah,
+    arabicScript: state.arabicScript
+  };
+  const settingsRef = useRef(reminderSettings);
+  settingsRef.current = reminderSettings;
+
+  // Fire a single reminder ~20 min after the user leaves the app; cancel it when they return.
   useEffect(() => {
     if (!hydrated) return;
-    scheduleHifzNotifications({
-      sabaqOn: state.sabaqOn,
-      revisionOn: state.revisionOn,
-      sabaqFreq: state.sabaqFreq,
-      revisionFreq: state.revisionFreq,
-      sabaqDays: state.sabaqDays,
-      revisionDays: state.revisionDays,
-      activeStartHour: state.activeStartHour,
-      activeEndHour: state.activeEndHour,
-      activeHoursMode: state.activeHoursMode,
-      splitActiveHours: state.splitActiveHours,
-      weekdayStartHour: state.weekdayStartHour,
-      weekdayEndHour: state.weekdayEndHour,
-      weekendStartHour: state.weekendStartHour,
-      weekendEndHour: state.weekendEndHour,
-      dailyActiveHours: state.dailyActiveHours,
-      hoursOn: state.hoursOn,
-      soundOn: state.soundOn,
-      newRange: state.newRange,
-      revisionRanges: state.revisionRanges,
-      sabaqTargetId: state.sabaqTargetId,
-      revisionTargetId: state.revisionTargetId,
-      revisionProgressIndex: state.revisionProgressIndex,
-      revisionProgressAyah: state.revisionProgressAyah,
-      arabicScript: state.arabicScript
-    }).then((result) => {
+    const subscription = RNAppState.addEventListener("change", (next) => {
+      if (next === "background" || next === "inactive") {
+        scheduleComebackReminder(settingsRef.current);
+      } else if (next === "active") {
+        cancelComebackReminder();
+      }
+    });
+    return () => subscription.remove();
+  }, [hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    scheduleHifzNotifications(reminderSettings).then((result) => {
       setState((current) => ({
         ...current,
         notificationsScheduled: result.scheduled,
         notificationPermission: result.permission
       }));
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     hydrated,
     state.sabaqOn,
@@ -172,34 +203,38 @@ export function useHifzAppState() {
       reviewHistory: [record, ...(state.reviewHistory ?? [])].slice(0, 80)
     };
     if (isRevisionFlow(item) && status === "finished") {
-      const nextIndex = state.cardIndex >= deck.length - 1 ? 0 : state.cardIndex + 1;
-      next.revisionProgressIndex = nextIndex;
+      const wrapped = state.cardIndex >= deck.length - 1;
+      next.revisionProgressIndex = wrapped ? 0 : state.cardIndex + 1;
       next.revisionProgressAyah = 1;
+      if (wrapped) next.revisionRounds = (state.revisionRounds ?? 0) + 1;
     }
     patch(next);
     setTimeout(advance, 120);
   };
 
-  // Revision: user taps the āyah where they got stuck — record it as weak, then enter "read" mode.
-  const stopAtAyah = (surah: number, ayah: number, label: string) => {
+  // Revision: user taps the āyah where they got stuck — optionally record it as weak, then enter "read" mode.
+  const stopAtAyah = (surah: number, ayah: number, label: string, addWeak: boolean) => {
     const key = `${surah}:${ayah}`;
-    const record: ReviewRecord = {
-      id: `revision-${key}-${Date.now()}`,
-      mode: "revision",
-      ayahLabel: `${surahNameOf(label)} ${ayah}`,
-      result: `stuck@${ayah}`,
-      timestamp: new Date().toISOString(),
-      surah,
-      ayah
-    };
-    patch({
-      results: { ...state.results, [key]: `stuck@${ayah}` },
-      reviewHistory: [record, ...(state.reviewHistory ?? [])].slice(0, 80),
+    const next: Partial<AppState> = {
       revisionReadAyah: ayah,
       revisionResumeAyah: ayah,
       revisionProgressIndex: state.cardIndex,
       revisionProgressAyah: ayah
-    });
+    };
+    if (addWeak) {
+      const record: ReviewRecord = {
+        id: `revision-${key}-${Date.now()}`,
+        mode: "revision",
+        ayahLabel: `${surahNameOf(label)} ${ayah}`,
+        result: `stuck@${ayah}`,
+        timestamp: new Date().toISOString(),
+        surah,
+        ayah
+      };
+      next.results = { ...state.results, [key]: `stuck@${ayah}` };
+      next.reviewHistory = [record, ...(state.reviewHistory ?? [])].slice(0, 80);
+    }
+    patch(next);
   };
 
   // Revision read mode: after practising the missed āyah, return to the same revision flow.

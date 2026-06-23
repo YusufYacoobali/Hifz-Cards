@@ -1,4 +1,4 @@
-package com.hifzcards.app
+package com.yacoobali.hifz
 
 import android.app.Application
 import android.content.res.Configuration

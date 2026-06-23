@@ -9,13 +9,17 @@
     "newArchEnabled": false,
     "userInterfaceStyle": "light",
     "backgroundColor": "#f6f2ea",
+    "icon": "./assets/app-icon/icon-ios.png",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.hifzcards.app"
+      "bundleIdentifier": "com.yacoobali.hifz",
+      "icon": "./assets/app-icon/icon-ios.png"
     },
     "android": {
-      "package": "com.hifzcards.app",
+      "package": "com.yacoobali.hifz",
+      "icon": "./assets/app-icon/icon-android.png",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/app-icon/icon-android.png",
         "backgroundColor": "#0f3b30"
       },
       "permissions": [

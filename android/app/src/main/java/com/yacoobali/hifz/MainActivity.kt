@@ -1,4 +1,4 @@
-package com.hifzcards.app
+package com.yacoobali.hifz
 
 import android.os.Build
 import android.os.Bundle

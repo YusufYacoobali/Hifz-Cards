@@ -5,6 +5,9 @@ export type ResultStatus = "solid" | "shaky" | "forgot" | "finished" | string;
 export type CommunityMode = "solo" | "friends" | "class";
 export type ActiveHoursMode = "same" | "weekend" | "daily";
 export type ArabicScript = "uthmani" | "indopak";
+export type ArabicSize = "small" | "medium" | "large";
+
+export const arabicSizeScale: Record<ArabicSize, number> = { small: 0.85, medium: 1, large: 1.2 };
 
 export type ReviewRecord = {
   id: string;
@@ -84,6 +87,7 @@ export type AppState = {
   revisionResumeAyah: number;
   revisionProgressIndex: number;
   revisionProgressAyah: number;
+  revisionRounds: number;
   sessionPhase: "idle" | "running" | "done";
   results: Record<string, ResultStatus>;
   notificationsScheduled: number;
@@ -94,6 +98,7 @@ export type AppState = {
   reviewHistory: ReviewRecord[];
   reciterId: string;
   arabicScript: ArabicScript;
+  arabicSize: ArabicSize;
 };
 
 export const weekdays: Days = { Mon: true, Tue: true, Wed: true, Thu: true, Fri: true, Sat: false, Sun: false };
@@ -120,9 +125,9 @@ export const initialState: AppState = {
   revisionRanges: [
     {
       id: "rev-default",
-      fromSurah: 1,
-      toSurah: 1,
-      label: "1 · Al-Fatihah"
+      fromSurah: 114,
+      toSurah: 114,
+      label: "114 · An-Nas"
     }
   ],
   activeStartHour: 6,
@@ -160,6 +165,7 @@ export const initialState: AppState = {
   revisionResumeAyah: 0,
   revisionProgressIndex: 0,
   revisionProgressAyah: 1,
+  revisionRounds: 0,
   sessionPhase: "idle",
   results: {},
   notificationsScheduled: 0,
@@ -169,5 +175,6 @@ export const initialState: AppState = {
   communityMode: "solo",
   reviewHistory: [],
   reciterId: "alafasy",
-  arabicScript: "uthmani"
+  arabicScript: "uthmani",
+  arabicSize: "medium"
 };

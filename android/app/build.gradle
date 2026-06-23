@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.hifzcards.app'
+    namespace 'com.yacoobali.hifz'
     defaultConfig {
-        applicationId 'com.hifzcards.app'
+        applicationId 'com.yacoobali.hifz'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

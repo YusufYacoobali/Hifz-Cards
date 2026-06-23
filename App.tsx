@@ -29,11 +29,13 @@ import {
   leaderboardEntries
 } from "./src/hifzModel";
 import { useHifzAppState } from "./src/hooks/useHifzAppState";
+import * as Sharing from "expo-sharing";
+import { captureRef } from "react-native-view-shot";
 import { playAyah, prefetchAyat, stopAyah } from "./src/audio";
 import { reciterById, reciters } from "./src/reciters";
 import { allSurahs, SurahInfo } from "./src/surahs";
 import { colors, heavyShadow, shadow } from "./src/theme";
-import { AppState, ArabicScript, Days, MemorisationRange, ResultStatus, Screen, SessionMode, SurahRange } from "./src/types";
+import { AppState, ArabicScript, ArabicSize, arabicSizeScale, Days, MemorisationRange, ResultStatus, Screen, SessionMode, SurahRange } from "./src/types";
 
 const ArabicFontContext = React.createContext<ArabicScript>("uthmani");
 
@@ -158,13 +160,16 @@ function NewOnboardingScreen({
   };
 
   const updateRevisionRange = (id: string, fromSurah: number, toSurah: number) => {
+    const clamped = clampSurahRange(fromSurah, toSurah, state.revisionRanges, id);
     const revisionRanges = state.revisionRanges.map((range) =>
-      range.id === id ? makeSurahRange(fromSurah, toSurah, id) : range
+      range.id === id ? makeSurahRange(clamped.from, clamped.to, id) : range
     );
     onPatch({ revisionRanges });
   };
   const addRevisionRange = () => {
-    const range = makeSurahRange(1, 1, `rev-${Date.now()}`);
+    const free = nextFreeRange(state.revisionRanges);
+    if (!free) return;
+    const range = makeSurahRange(free.from, free.to, `rev-${Date.now()}`);
     onPatch({ revisionRanges: [...state.revisionRanges, range], revisionTargetId: range.id });
   };
   const removeRevisionRange = (id: string) => {
@@ -485,10 +490,11 @@ function HomeScreen({
   onModes: () => void;
 }) {
   const dashboard = getDashboardStats(state);
+  const revision = revisionTotals(state);
 
   return (
     <View style={styles.fullScreen}>
-      <ScrollView contentContainerStyle={styles.withTabsScroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.withTabsScroll, styles.homeScrollPad]} showsVerticalScrollIndicator={false}>
         <HeroHeader state={state} safeTop={safeTop} />
         <View style={styles.content}>
           <View style={styles.statRow}>
@@ -503,10 +509,12 @@ function HomeScreen({
               <View style={styles.flex}>
                 <Overline>Today</Overline>
                 <Text style={styles.cardTitle}>
-                  {state.sabaqOn ? `${state.perDay} new/day` : "New paused"} · {state.revisionOn ? `${state.revisionLoad} to revise` : "revision off"}
+                  {state.sabaqOn ? `${state.perDay} new/day` : "New paused"} · {state.revisionOn ? `${revision.remaining} āyāt to revise` : "revision off"}
                 </Text>
                 <Text style={styles.cardSubtitle}>
-                  New memorisation continues from {dashboard.currentSurah} {dashboard.rangeLabel}.
+                  {state.revisionOn
+                    ? `Revision round ${revision.rounds + 1} · ${revision.done} of ${revision.total} āyāt done`
+                    : `New memorisation continues from ${dashboard.currentSurah} ${dashboard.rangeLabel}.`}
                 </Text>
               </View>
               <View style={styles.todayRing}>
@@ -551,9 +559,11 @@ function HomeScreen({
             </View>
             <IconButton name="notifications-outline" onPress={() => onNav("notif")} />
           </Panel>
-          <PrimaryButton label="Start card session" icon="arrow-forward" onPress={onModes} />
         </View>
       </ScrollView>
+      <View style={[styles.homeStickyBar, { bottom: tabBarHeight(safeBottom), paddingBottom: 12 }]}>
+        <PrimaryButton label="Start card session" icon="arrow-forward" onPress={onModes} />
+      </View>
     </View>
   );
 }
@@ -588,13 +598,16 @@ function NotificationsScreen({
     });
   };
   const updateRevisionRange = (id: string, fromSurah: number, toSurah: number) => {
+    const clamped = clampSurahRange(fromSurah, toSurah, state.revisionRanges, id);
     const revisionRanges = state.revisionRanges.map((range) =>
-      range.id === id ? makeSurahRange(fromSurah, toSurah, id) : range
+      range.id === id ? makeSurahRange(clamped.from, clamped.to, id) : range
     );
     onPatch({ revisionRanges, revisionProgressIndex: 0, revisionProgressAyah: 1 });
   };
   const addRevisionRange = () => {
-    const range = makeSurahRange(1, 1, `rev-${Date.now()}`);
+    const free = nextFreeRange(state.revisionRanges);
+    if (!free) return;
+    const range = makeSurahRange(free.from, free.to, `rev-${Date.now()}`);
     onPatch({ revisionRanges: [...state.revisionRanges, range], revisionTargetId: range.id, revisionProgressIndex: 0, revisionProgressAyah: 1 });
   };
   const removeRevisionRange = (id: string) => {
@@ -715,6 +728,7 @@ function NotificationsScreen({
       <View style={styles.settingsSection}>
         <Overline>Display</Overline>
         <ScriptSelector active={state.arabicScript ?? "uthmani"} onChange={(arabicScript) => onPatch({ arabicScript })} />
+        <ArabicSizeSelector active={state.arabicSize ?? "medium"} onChange={(arabicSize) => onPatch({ arabicSize })} />
       </View>
 
       <View style={styles.settingsSection}>
@@ -790,7 +804,7 @@ function SessionScreen({
   onPatch: (next: Partial<AppState>) => void;
   onStart: (mode: SessionMode) => void;
   onMark: (status: ResultStatus) => void;
-  onStopAt: (surah: number, ayah: number, label: string) => void;
+  onStopAt: (surah: number, ayah: number, label: string, addWeak: boolean) => void;
   onResumeRevision: () => void;
 }) {
   const deck = getDeck(state.sessionMode, { newRange: state.newRange, revisionRanges: state.revisionRanges, history: state.reviewHistory, arabicScript: state.arabicScript });
@@ -800,6 +814,7 @@ function SessionScreen({
   const translateX = useRef(new Animated.Value(0)).current;
   const isRev = isRevisionFlow(item);
   const reading = isRev && state.revisionReadAyah > 0;
+  const arScale = arabicSizeScale[state.arabicSize] ?? 1;
   const readCard = reading ? ayahCard(item.surah ?? 0, state.revisionReadAyah, state.arabicScript) : null;
   const currentSurahNumber = isRev ? item.surah ?? 0 : surahNumberFromLabel(item.surah ?? "67");
   const currentAyahNumber = reading ? state.revisionReadAyah : isRev ? item.start : item.num;
@@ -957,17 +972,27 @@ function SessionScreen({
                   : "REVISION · RECITE FROM MEMORY"}
           </Text>
           {reading && readCard ? (
-            <AyahCard card={readCard} note="Practise this āyah, then continue the revision from here." />
+            <AyahCard card={readCard} note="Practise this āyah, then continue the revision from here." arScale={arScale} />
           ) : isRev ? (
             <RevisionCard
               item={item}
               startAt={revisionStartAyah}
               revealed={state.revealed}
               onReveal={() => onPatch({ revealed: true })}
-              onStuck={(ayah) => onStopAt(item.surah ?? 0, ayah, item.label)}
+              arScale={arScale}
+              onStuck={(ayah) =>
+                Alert.alert(
+                  `Stopped at āyah ${ayah}`,
+                  "Add this āyah to your weak cards to drill later?",
+                  [
+                    { text: "Just practise", onPress: () => onStopAt(item.surah ?? 0, ayah, item.label, false) },
+                    { text: "Add to weak", onPress: () => onStopAt(item.surah ?? 0, ayah, item.label, true) }
+                  ]
+                )
+              }
             />
           ) : (
-            <AyahCard card={item} />
+            <AyahCard card={item} arScale={arScale} />
           )}
           {(!isRev || reading) && (
             <Pressable style={styles.audioButton} onPress={() => playAyah(currentSurahNumber, currentAyahNumber, state.reciterId)}>
@@ -980,13 +1005,13 @@ function SessionScreen({
         </Animated.View>
       </View>
       {!isRev ? (
-        <View style={[styles.markRow, { bottom: safeBottom + (Platform.OS === "android" ? 14 : 24) }]}>
+        <View style={[styles.markRow, { bottom: safeBottom + (Platform.OS === "android" ? 20 : 28) }]}>
           <MarkButton label="Forgot" sub="show soon" color={colors.red} onPress={() => onMark("forgot")} />
           <MarkButton label="Shaky" sub="review later" color={colors.goldDark} onPress={() => onMark("shaky")} />
           <MarkButton label="Solid" sub="space it out" color="#fff" filled onPress={() => onMark("solid")} />
         </View>
       ) : reading ? (
-        <View style={[styles.markRow, { bottom: safeBottom + (Platform.OS === "android" ? 14 : 24) }]}>
+        <View style={[styles.markRow, { bottom: safeBottom + (Platform.OS === "android" ? 20 : 28) }]}>
           <PrimaryButton
             label={`Continue from āyah ${state.revisionReadAyah}`}
             icon="return-down-forward"
@@ -995,11 +1020,11 @@ function SessionScreen({
           />
         </View>
       ) : !state.revealed ? (
-        <View style={[styles.markRow, { bottom: safeBottom + (Platform.OS === "android" ? 14 : 24) }]}>
+        <View style={[styles.markRow, { bottom: safeBottom + (Platform.OS === "android" ? 20 : 28) }]}>
           <PrimaryButton label="I've recited · mark where I stopped" icon="arrow-down" onPress={() => onPatch({ revealed: true })} style={styles.flex} />
         </View>
       ) : (
-        <View style={[styles.markRow, { bottom: safeBottom + (Platform.OS === "android" ? 14 : 24) }]}>
+        <View style={[styles.markRow, { bottom: safeBottom + (Platform.OS === "android" ? 20 : 28) }]}>
           <PrimaryButton label="I reached the end · finished the sūrah" icon="checkmark" onPress={() => onMark("finished")} style={styles.flex} />
         </View>
       )}
@@ -1009,12 +1034,24 @@ function SessionScreen({
 
 function ProgressScreen({ state, safeTop, onNav, onStart }: { state: AppState; safeTop: number; onNav: (screen: Screen) => void; onStart: (mode: SessionMode) => void }) {
   const progress = getProgressStats(state.reviewHistory);
+  const revision = revisionTotals(state);
 
   return (
     <ScrollView style={styles.fullScreen} contentContainerStyle={styles.withTabsScroll} showsVerticalScrollIndicator={false}>
       <View style={[styles.content, { paddingTop: safeTop + 8 }]}>
         <Text style={styles.screenTitle}>Progress</Text>
-        <Text style={styles.screenSub}>Sūrah Al-Mulk · Āyāt 12-22</Text>
+        <Text style={styles.screenSub}>Memorising {state.newRange.surah}</Text>
+        <Panel style={styles.rowBetween}>
+          <View style={styles.flex}>
+            <Overline>Revision rounds</Overline>
+            <Text style={styles.cardTitle}>{revision.rounds} complete {revision.rounds === 1 ? "round" : "rounds"}</Text>
+            <Text style={styles.cardSubtitle}>{revision.remaining} of {revision.total} āyāt left this round</Text>
+          </View>
+          <View style={styles.todayRing}>
+            <Text style={styles.todayRingValue}>{revision.rounds}</Text>
+            <Text style={styles.todayRingLabel}>rounds</Text>
+          </View>
+        </Panel>
         <Panel>
           <ProgressLine label="Memorisation" value={`${progress.memorisedPercent}%`} pct={progress.memorisedPercent} color={colors.mint} />
           <ProgressLine label="Revision strength" value={`${progress.revisionPercent}%`} pct={progress.revisionPercent} color={colors.goldDark} />
@@ -1140,10 +1177,19 @@ function BoardScreen({ state, safeTop, onPatch }: { state: AppState; safeTop: nu
 
 function RecapScreen({ state, safeTop, onNav }: { state: AppState; safeTop: number; onNav: (screen: Screen) => void }) {
   const recap = getWeeklyRecap(state.reviewHistory);
-  const shareRecap = () => {
-    Share.share({
-      message: `Hifz Cards weekly recap: ${recap.cardsTested} cards reviewed, ${recap.ayahsRevised} ayat revised, ${recap.newMemorised} new memorised, ${recap.effortPoints} effort points.`
-    }).catch(() => undefined);
+  const cardRef = useRef<View>(null);
+  const shareText = `Hifz Cards weekly recap: ${recap.cardsTested} cards reviewed, ${recap.ayahsRevised} āyāt revised, ${recap.newMemorised} new memorised, ${recap.effortPoints} effort points.`;
+  const shareRecap = async () => {
+    try {
+      const uri = await captureRef(cardRef, { format: "png", quality: 1 });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: "image/png", dialogTitle: "Share your Hifz recap" });
+        return;
+      }
+      await Share.share({ url: uri, message: shareText });
+    } catch {
+      Share.share({ message: shareText }).catch(() => undefined);
+    }
   };
 
   return (
@@ -1153,7 +1199,7 @@ function RecapScreen({ state, safeTop, onNav }: { state: AppState; safeTop: numb
         <Text style={styles.recapHeaderText}>Weekly recap</Text>
         <View style={{ width: 38 }} />
       </View>
-      <Panel style={styles.shareCard}>
+      <Panel ref={cardRef} style={styles.shareCard}>
         <View style={styles.rowBetween}>
           <Overline>Week of 15 June</Overline>
           <View style={styles.miniLogo}>
@@ -1348,13 +1394,13 @@ function HeroHeader({ state, safeTop }: { state: AppState; safeTop: number }) {
   );
 }
 
-function AyahCard({ card, note }: { card: HifzCard; note?: string }) {
+function AyahCard({ card, note, arScale = 1 }: { card: HifzCard; note?: string; arScale?: number }) {
   const surahName = card.surah ? card.surah.split("·").slice(1).join("·").trim() || card.surah : "Al-Mulk";
   return (
     <ScrollView style={styles.ayahCardScroll} contentContainerStyle={styles.ayahCardBody} showsVerticalScrollIndicator={false}>
       <Text style={styles.sessionMeta}>Sūrah {surahName} · Āyah {card.num}</Text>
       {!!note && <Text style={styles.continueNote}>{note}</Text>}
-      <Arabic style={styles.memoriseArabic}>{card.full}</Arabic>
+      <Arabic style={[styles.memoriseArabic, { fontSize: 27 * arScale, lineHeight: 54 * arScale }]}>{card.full}</Arabic>
       {!!card.tr && (
         <View style={styles.revealBlock}>
           <Divider />
@@ -1370,15 +1416,18 @@ function RevisionCard({
   startAt,
   revealed,
   onReveal,
-  onStuck
+  onStuck,
+  arScale = 1
 }: {
   item: RevisionFlow;
   startAt: number;
   revealed: boolean;
   onReveal: () => void;
   onStuck: (ayah: number) => void;
+  arScale?: number;
 }) {
   const [showFromJuz, setShowFromJuz] = useState(0);
+  const [showHelp, setShowHelp] = useState(false);
   const passage = item.passage.filter((ayah) => ayah.num >= startAt);
   const availableJuz = Array.from(new Set(passage.map((ayah) => juzForLocation(item.surah ?? 1, ayah.num))));
   const visiblePassage = showFromJuz ? passage.filter((ayah) => juzForLocation(item.surah ?? 1, ayah.num) >= showFromJuz) : passage;
@@ -1389,25 +1438,39 @@ function RevisionCard({
       <Text style={styles.sessionMeta}>Sūrah {item.label} · from āyah {startAt}</Text>
       {!revealed ? (
         <Pressable style={styles.revisionStart} onPress={onReveal}>
-          <Arabic style={styles.promptArabic}>{firstAyah?.text}</Arabic>
+          <Arabic style={[styles.promptArabic, { fontSize: 30 * arScale, lineHeight: 58 * arScale }]}>{firstAyah?.text}</Arabic>
           <Text style={styles.revisionPill}>Recite from memory — how far can you go?</Text>
         </Pressable>
       ) : (
         <>
-          <Text style={styles.stuckHint}>Tap the next āyah you get stuck at ↓</Text>
-          <View style={styles.juzJumpPanel}>
-            <Text style={styles.juzHint}>Current place: Juz {currentJuz}. Hide earlier Juz to jump faster.</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.juzChipRail}>
-              <Pressable style={[styles.juzChip, showFromJuz === 0 && styles.juzChipSelected]} onPress={() => setShowFromJuz(0)}>
-                <Text style={[styles.juzChipText, showFromJuz === 0 && styles.juzChipTextSelected]}>Show all</Text>
+          <View style={styles.revisionHeaderBar}>
+            <Text style={styles.revisionHeaderText}>Tap the āyah you stop at</Text>
+            <View style={styles.revisionHeaderRight}>
+              {availableJuz.length > 1 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.juzChipRail}>
+                  <Pressable style={[styles.juzChip, showFromJuz === 0 && styles.juzChipSelected]} onPress={() => setShowFromJuz(0)}>
+                    <Text style={[styles.juzChipText, showFromJuz === 0 && styles.juzChipTextSelected]}>All</Text>
+                  </Pressable>
+                  {availableJuz.map((juz) => (
+                    <Pressable key={juz} style={[styles.juzChip, showFromJuz === juz && styles.juzChipSelected]} onPress={() => setShowFromJuz(juz)}>
+                      <Text style={[styles.juzChipText, showFromJuz === juz && styles.juzChipTextSelected]}>{juz}+</Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              )}
+              <Pressable style={styles.helpDot} onPress={() => setShowHelp((value) => !value)} hitSlop={8}>
+                <Ionicons name={showHelp ? "close" : "help"} size={14} color={colors.mintDark} />
               </Pressable>
-              {availableJuz.map((juz) => (
-                <Pressable key={juz} style={[styles.juzChip, showFromJuz === juz && styles.juzChipSelected]} onPress={() => setShowFromJuz(juz)}>
-                  <Text style={[styles.juzChipText, showFromJuz === juz && styles.juzChipTextSelected]}>Juz {juz}+</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
+            </View>
           </View>
+          {showHelp && (
+            <View style={styles.helpBubble}>
+              <Text style={styles.helpBubbleText}>
+                Recite from memory. When you slip, tap that āyah — choose whether to add it to weak cards, then practise it and
+                carry on. You're at Juz {currentJuz}; the chips hide earlier Juz so you can jump ahead.
+              </Text>
+            </View>
+          )}
           <ScrollView showsVerticalScrollIndicator style={styles.revisionScroll} contentContainerStyle={styles.revisionScrollBody}>
             {visiblePassage.map((ayah, index) => {
               const juz = juzForLocation(item.surah ?? 1, ayah.num);
@@ -1424,7 +1487,7 @@ function RevisionCard({
                   )}
                   <Pressable style={styles.passageRow} onPress={() => onStuck(ayah.num)}>
                     <Text style={styles.ayahBadge}>{ayah.num}</Text>
-                    <Arabic style={styles.passageText}>{ayah.text}</Arabic>
+                    <Arabic style={[styles.passageText, { fontSize: 21 * arScale, lineHeight: 42 * arScale }]}>{ayah.text}</Arabic>
                   </Pressable>
                 </React.Fragment>
               );
@@ -1468,9 +1531,15 @@ function Header({ title, onBack }: { title: string; onBack: () => void }) {
   );
 }
 
-function Panel({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
-  return <View style={[styles.panel, style]}>{children}</View>;
-}
+const Panel = React.forwardRef<View, { children: React.ReactNode; style?: StyleProp<ViewStyle> }>(
+  function Panel({ children, style }, ref) {
+    return (
+      <View ref={ref} collapsable={false} style={[styles.panel, style]}>
+        {children}
+      </View>
+    );
+  }
+);
 
 function Title({ children }: { children: React.ReactNode }) {
   return <Text style={styles.onboardingTitle}>{children}</Text>;
@@ -1762,6 +1831,56 @@ function surahRangeLabel(fromSurah: number, toSurah: number) {
 
 function makeSurahRange(fromSurah: number, toSurah: number, id: string): SurahRange {
   return { id, fromSurah, toSurah, label: surahRangeLabel(fromSurah, toSurah) };
+}
+
+// Sūrahs already claimed by other revision ranges (so we can prevent overlap).
+function coveredSurahs(ranges: SurahRange[], excludeId?: string) {
+  const set = new Set<number>();
+  ranges.forEach((range) => {
+    if (range.id === excludeId) return;
+    for (let s = Math.min(range.fromSurah, range.toSurah); s <= Math.max(range.fromSurah, range.toSurah); s += 1) set.add(s);
+  });
+  return set;
+}
+
+// Clamp a chosen [from,to] so it never overlaps another range; shrinks the end to the first taken sūrah.
+function clampSurahRange(from: number, to: number, ranges: SurahRange[], excludeId: string) {
+  const covered = coveredSurahs(ranges, excludeId);
+  let lo = Math.min(from, to);
+  let hi = Math.max(from, to);
+  while (lo <= 114 && covered.has(lo)) lo += 1;
+  if (lo > 114) lo = Math.max(1, Math.min(from, to));
+  hi = Math.max(hi, lo);
+  for (let s = lo; s <= hi; s += 1) {
+    if (covered.has(s)) {
+      hi = s - 1;
+      break;
+    }
+  }
+  if (hi < lo) hi = lo;
+  return { from: lo, to: hi };
+}
+
+// A sensible new range: the highest free block, ending at the last sūrah when possible.
+function nextFreeRange(ranges: SurahRange[]) {
+  const covered = coveredSurahs(ranges);
+  let hi = 114;
+  while (hi >= 1 && covered.has(hi)) hi -= 1;
+  if (hi < 1) return null;
+  let lo = hi;
+  while (lo - 1 >= 1 && !covered.has(lo - 1)) lo -= 1;
+  return { from: lo, to: hi };
+}
+
+// Total āyāt across the user's revision ranges, and how many remain in the current round.
+function revisionTotals(state: AppState) {
+  const deck = buildRevisionDeck(state.revisionRanges, state.arabicScript);
+  const total = deck.reduce((sum, flow) => sum + flow.passage.length, 0);
+  const idx = Math.min(Math.max(0, state.revisionProgressIndex), Math.max(0, deck.length - 1));
+  let done = 0;
+  for (let i = 0; i < idx; i += 1) done += deck[i].passage.length;
+  done += Math.max(0, (state.revisionProgressAyah || 1) - 1);
+  return { total, done, remaining: Math.max(0, total - done), rounds: state.revisionRounds ?? 0 };
 }
 
 function activeDayCount(days: Days) {
@@ -2255,6 +2374,34 @@ function ScriptSelector({ active, onChange }: { active: ArabicScript; onChange: 
   );
 }
 
+function ArabicSizeSelector({ active, onChange }: { active: ArabicSize; onChange: (size: ArabicSize) => void }) {
+  const scale = arabicSizeScale[active] ?? 1;
+  return (
+    <Panel style={styles.scriptPanel}>
+      <View style={styles.settingRowInner}>
+        <View style={styles.iconTile}>
+          <Ionicons name="resize-outline" size={20} color={colors.mint} />
+        </View>
+        <View style={styles.flex}>
+          <Text style={styles.cardTitle}>Arabic text size</Text>
+          <Text style={styles.cardSubtitle}>How large the āyāt appear on memorisation and revision cards.</Text>
+        </View>
+      </View>
+      <Segmented
+        values={["small", "medium", "large"]}
+        labels={["Small", "Medium", "Large"]}
+        active={active}
+        onChange={(value) => onChange(value as ArabicSize)}
+      />
+      <View style={styles.scriptPreview}>
+        <Arabic style={[styles.scriptPreviewArabic, { fontSize: 24 * scale, lineHeight: 44 * scale }]}>
+          بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+        </Arabic>
+      </View>
+    </Panel>
+  );
+}
+
 function StatCard({ icon, value, label }: { icon: string; value: string; label: string }) {
   return (
     <Panel style={styles.statCard}>
@@ -2493,6 +2640,11 @@ function formatHour(hour: number) {
   const suffix = hour < 12 ? "am" : "pm";
   const display = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
   return `${display}:00 ${suffix}`;
+}
+
+// Approximate height of the bottom tab bar, so sticky content can sit just above it.
+function tabBarHeight(safeBottom: number) {
+  return Platform.OS === "android" ? Math.max(96, safeBottom + 78) : Math.max(84, safeBottom + 58);
 }
 
 function activeHoursSummary(state: AppState) {
@@ -3235,6 +3387,19 @@ const styles = StyleSheet.create({
   withTabsScroll: {
     paddingBottom: Platform.OS === "android" ? 124 : 108
   },
+  homeScrollPad: {
+    paddingBottom: Platform.OS === "android" ? 196 : 184
+  },
+  homeStickyBar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    backgroundColor: colors.paper,
+    borderTopWidth: 1,
+    borderTopColor: colors.line
+  },
   hero: {
     paddingTop: 30,
     paddingHorizontal: 24,
@@ -3683,13 +3848,13 @@ const styles = StyleSheet.create({
   },
   cardStack: {
     position: "absolute",
-    left: Platform.OS === "android" ? 16 : 22,
-    right: Platform.OS === "android" ? 16 : 22,
-    top: Platform.OS === "android" ? 112 : 130,
-    bottom: Platform.OS === "android" ? 142 : 112
+    left: Platform.OS === "android" ? 18 : 22,
+    right: Platform.OS === "android" ? 18 : 22,
+    top: Platform.OS === "android" ? 122 : 140,
+    bottom: Platform.OS === "android" ? 150 : 122
   },
   memoriseCardStack: {
-    bottom: Platform.OS === "android" ? 158 : 112
+    bottom: Platform.OS === "android" ? 166 : 122
   },
   behindCard: {
     position: "absolute",
@@ -3906,6 +4071,47 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 8,
     fontSize: Platform.OS === "android" ? 11.5 : 12
+  },
+  revisionHeaderBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 8
+  },
+  revisionHeaderText: {
+    flexShrink: 1,
+    color: colors.goldDark,
+    fontWeight: "900",
+    fontSize: 12
+  },
+  revisionHeaderRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flexShrink: 1
+  },
+  helpDot: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    borderColor: "#cfe0d8",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.card
+  },
+  helpBubble: {
+    backgroundColor: colors.mintPale,
+    borderRadius: 12,
+    padding: 11,
+    marginBottom: 8
+  },
+  helpBubbleText: {
+    color: "#2f5d4f",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "600"
   },
   juzJumpPanel: {
     width: "100%",
