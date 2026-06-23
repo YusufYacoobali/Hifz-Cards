@@ -33,11 +33,14 @@ import { playAyah, prefetchAyat, stopAyah } from "./src/audio";
 import { reciterById, reciters } from "./src/reciters";
 import { allSurahs, SurahInfo } from "./src/surahs";
 import { colors, heavyShadow, shadow } from "./src/theme";
-import { AppState, Days, MemorisationRange, ResultStatus, Screen, SessionMode, SurahRange } from "./src/types";
+import { AppState, ArabicScript, Days, MemorisationRange, ResultStatus, Screen, SessionMode, SurahRange } from "./src/types";
+
+const ArabicFontContext = React.createContext<ArabicScript>("uthmani");
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    Uthmani: require("./assets/fonts/uthmani2.ttf")
+    Uthmani: require("./assets/fonts/uthmani2.ttf"),
+    IndoPak: require("./assets/fonts/DigitalKhattIndoPak.otf")
   });
   return (
     <SafeAreaProvider>
@@ -59,36 +62,38 @@ function AppContent() {
     <View style={styles.safe}>
       <StatusBar hidden />
       <View style={styles.appShell}>
-        {state.screen === "onboarding" && (
-          <NewOnboardingScreen
-            state={state}
-            safeTop={safe.top}
-            safeBottom={safe.bottom}
-            onPatch={patch}
-            onComplete={beginApp}
-          />
-        )}
-        {state.screen === "home" && <HomeScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onNav={nav} onModes={() => nav("modes")} />}
-        {state.screen === "notif" && <NotificationsScreen state={state} safeTop={safe.top} onPatch={patch} onNav={nav} />}
-        {state.screen === "modes" && <ModeScreen state={state} safeTop={safe.top} onNav={nav} onStart={startSession} />}
-        {state.screen === "session" && (
-          <SessionScreen
-            state={state}
-            safeTop={safe.top}
-            safeBottom={safe.bottom}
-            onNav={nav}
-            onPatch={patch}
-            onStart={startSession}
-            onMark={markCard}
-            onStopAt={stopAtAyah}
-            onResumeRevision={resumeRevision}
-          />
-        )}
-        {state.screen === "progress" && <ProgressScreen state={state} safeTop={safe.top} onNav={nav} onStart={startSession} />}
-        {state.screen === "board" && <BoardScreen state={state} safeTop={safe.top} onPatch={patch} />}
-        {state.screen === "recap" && <RecapScreen state={state} safeTop={safe.top} onNav={nav} />}
-        {state.screen === "profile" && <ProfileScreen state={state} safeTop={safe.top} onPatch={patch} onNav={nav} />}
-        {showTabs && <BottomTabs screen={state.screen} safeBottom={safe.bottom} onNav={nav} />}
+        <ArabicFontContext.Provider value={state.arabicScript ?? "uthmani"}>
+          {state.screen === "onboarding" && (
+            <NewOnboardingScreen
+              state={state}
+              safeTop={safe.top}
+              safeBottom={safe.bottom}
+              onPatch={patch}
+              onComplete={beginApp}
+            />
+          )}
+          {state.screen === "home" && <HomeScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onNav={nav} onModes={() => nav("modes")} />}
+          {state.screen === "notif" && <NotificationsScreen state={state} safeTop={safe.top} onPatch={patch} onNav={nav} />}
+          {state.screen === "modes" && <ModeScreen state={state} safeTop={safe.top} onNav={nav} onStart={startSession} />}
+          {state.screen === "session" && (
+            <SessionScreen
+              state={state}
+              safeTop={safe.top}
+              safeBottom={safe.bottom}
+              onNav={nav}
+              onPatch={patch}
+              onStart={startSession}
+              onMark={markCard}
+              onStopAt={stopAtAyah}
+              onResumeRevision={resumeRevision}
+            />
+          )}
+          {state.screen === "progress" && <ProgressScreen state={state} safeTop={safe.top} onNav={nav} onStart={startSession} />}
+          {state.screen === "board" && <BoardScreen state={state} safeTop={safe.top} onPatch={patch} />}
+          {state.screen === "recap" && <RecapScreen state={state} safeTop={safe.top} onNav={nav} />}
+          {state.screen === "profile" && <ProfileScreen state={state} safeTop={safe.top} onPatch={patch} onNav={nav} />}
+          {showTabs && <BottomTabs screen={state.screen} safeBottom={safe.bottom} onNav={nav} />}
+        </ArabicFontContext.Provider>
       </View>
     </View>
   );
@@ -369,33 +374,7 @@ function NewOnboardingScreen({
           <View>
             <Title>When can we{"\n"}reach you?</Title>
             <Muted>Both reminder services stay inside these hours — nothing arrives outside them.</Muted>
-            <Panel style={styles.timeWindowPanel}>
-              <View style={styles.hoursVisual}>
-                <TimeBlock label="FROM" time={formatHour(state.activeStartHour)} hint="first prompt" />
-                <LinearGradient
-                  colors={[colors.gold, colors.mint]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.timeLine}
-                />
-                <TimeBlock label="UNTIL" time={formatHour(state.activeEndHour)} hint="last prompt" />
-              </View>
-              <View style={styles.rangeSteppers}>
-                <Stepper
-                  value={state.activeStartHour}
-                  label="start"
-                  onMinus={() => onPatch({ activeStartHour: Math.max(0, state.activeStartHour - 1) })}
-                  onPlus={() => onPatch({ activeStartHour: Math.min(state.activeEndHour - 1, state.activeStartHour + 1) })}
-                />
-                <Text style={styles.arrowText}>→</Text>
-                <Stepper
-                  value={state.activeEndHour}
-                  label="end"
-                  onMinus={() => onPatch({ activeEndHour: Math.max(state.activeStartHour + 1, state.activeEndHour - 1) })}
-                  onPlus={() => onPatch({ activeEndHour: Math.min(23, state.activeEndHour + 1) })}
-                />
-              </View>
-            </Panel>
+            <ActiveHoursPanel state={state} onPatch={onPatch} />
             <Panel style={[styles.settingRow, styles.scheduleSpacer]}>
               <View style={styles.iconTile}>
                 <Ionicons name="notifications-outline" size={20} color={colors.mint} />
@@ -458,7 +437,7 @@ function NewOnboardingScreen({
                   <Text style={styles.cardTitle}>Active hours</Text>
                 </View>
                 <Text style={styles.summaryLine}>
-                  {formatHour(state.activeStartHour)} – {formatHour(state.activeEndHour)}
+                  {activeHoursSummary(state)}
                 </Text>
               </Panel>
             </Stack>
@@ -482,13 +461,11 @@ function NewOnboardingScreen({
           </View>
         )}
       </ScrollView>
-      <View style={[styles.footer, { paddingBottom: Math.max(14, safeBottom + 10) }]}>
-        {stepIndex > 0 ? (
+      <View style={[styles.footer, stepIndex === 0 && styles.footerFirst, { paddingBottom: Math.max(14, safeBottom + 10) }]}>
+        {stepIndex > 0 && (
           <IconButton name="arrow-back" onPress={goBack} />
-        ) : (
-          <View style={styles.footerBackSpacer} />
         )}
-        <PrimaryButton label={buttonLabel} onPress={goNext} style={styles.flex} />
+        <PrimaryButton label={buttonLabel} onPress={goNext} style={stepIndex > 0 ? styles.flex : styles.footerSoloButton} />
       </View>
     </View>
   );
@@ -574,11 +551,9 @@ function HomeScreen({
             </View>
             <IconButton name="notifications-outline" onPress={() => onNav("notif")} />
           </Panel>
+          <PrimaryButton label="Start card session" icon="arrow-forward" onPress={onModes} />
         </View>
       </ScrollView>
-      <View style={[styles.floatingAction, { bottom: Math.max(90, safeBottom + (Platform.OS === "android" ? 86 : 76)) }]}>
-        <PrimaryButton label="Start card session" icon="arrow-forward" onPress={onModes} />
-      </View>
     </View>
   );
 }
@@ -636,140 +611,136 @@ function NotificationsScreen({
   return (
     <ScrollView style={styles.fullScreen} contentContainerStyle={[styles.settingsContent, { paddingTop: safeTop + 8 }]} showsVerticalScrollIndicator={false}>
       <Header title="Card settings" onBack={() => onNav("home")} />
-      <Overline>Cards to practise</Overline>
-      <Panel style={styles.focusPanel}>
-        <View style={styles.rowBetween}>
-          <View style={styles.flex}>
-            <Text style={styles.cardTitle}>New memorisation</Text>
-            <Text style={styles.cardSubtitle}>{state.newRange.label}</Text>
+      <View style={styles.settingsSection}>
+        <Overline>New memorisation</Overline>
+        <Panel style={styles.focusPanel}>
+          <View style={styles.rowBetween}>
+            <View style={styles.flex}>
+              <Text style={styles.cardTitle}>Current sūrah</Text>
+              <Text style={styles.cardSubtitle}>{state.newRange.label}</Text>
+            </View>
+            <Arabic style={styles.focusArabic}>{state.newRange.arabic}</Arabic>
           </View>
-          <Arabic style={styles.focusArabic}>{state.newRange.arabic}</Arabic>
-        </View>
-        <SurahSearchList selectedNumber={surahNumberFromLabel(state.newRange.surah)} onSelect={setNewSurah} height={220} />
-        <Divider />
-        <Overline>Start from āyah</Overline>
-        <Stepper
-          value={state.newRange.from}
-          label={`of ${surahAyahCount(state.newRange.surah)}`}
-          onMinus={() => setNewStart(Math.max(1, state.newRange.from - 1))}
-          onPlus={() => setNewStart(Math.min(surahAyahCount(state.newRange.surah), state.newRange.from + 1))}
+          <SurahSearchList selectedNumber={surahNumberFromLabel(state.newRange.surah)} onSelect={setNewSurah} height={220} />
+          <Divider />
+          <Overline>Start from āyah</Overline>
+          <Stepper
+            value={state.newRange.from}
+            label={`of ${surahAyahCount(state.newRange.surah)}`}
+            onMinus={() => setNewStart(Math.max(1, state.newRange.from - 1))}
+            onPlus={() => setNewStart(Math.min(surahAyahCount(state.newRange.surah), state.newRange.from + 1))}
+          />
+        </Panel>
+        <DailyTargetCard
+          icon="albums-outline"
+          title="Daily new target"
+          value={state.perDay}
+          unit="āyāt/day"
+          note={`Recommended: ${recommendedNewAyat(state.newRange)} āyāt/day for this sūrah`}
+          min={1}
+          max={20}
+          step={1}
+          onChange={(perDay) => onPatch({ perDay })}
         />
-      </Panel>
-      <DailyTargetCard
-        icon="albums-outline"
-        title="Daily new target"
-        value={state.perDay}
-        unit="āyāt/day"
-        note={`Recommended: ${recommendedNewAyat(state.newRange)} āyāt/day for this sūrah`}
-        min={1}
-        max={20}
-        step={1}
-        onChange={(perDay) => onPatch({ perDay })}
-      />
-      <Panel style={styles.revisionSettingsPanel}>
-        <View style={styles.settingRowInner}>
-          <View style={styles.iconTile}>
-            <Ionicons name="repeat-outline" size={20} color={colors.mint} />
+        <ReminderCard
+          icon="leaf-outline"
+          title="New reminders"
+          subtitle="New sabaq · one āyah at a time"
+          quote="Recite this āyah, then continue to the next one."
+          enabled={state.sabaqOn}
+          onToggle={() => onPatch({ sabaqOn: !state.sabaqOn })}
+          active={state.sabaqFreq}
+          onFrequency={(sabaqFreq) => onPatch({ sabaqFreq })}
+          days={state.sabaqDays}
+          onToggleDay={(day) => togglePlanDay("sabaqDays", day)}
+          targetId={state.sabaqTargetId}
+          targetOptions={[{ id: state.newRange.id, label: state.newRange.label }]}
+          onTarget={(sabaqTargetId) => onPatch({ sabaqTargetId })}
+        />
+      </View>
+
+      <View style={styles.settingsSection}>
+        <Overline>Revision</Overline>
+        <Panel style={styles.revisionSettingsPanel}>
+          <View style={styles.settingRowInner}>
+            <View style={styles.iconTile}>
+              <Ionicons name="repeat-outline" size={20} color={colors.mint} />
+            </View>
+            <View style={styles.flex}>
+              <Text style={styles.cardTitle}>Revision sections</Text>
+              <Text style={styles.cardSubtitle}>{revisionRecommendationText(state.revisionRanges)}</Text>
+            </View>
           </View>
+          <Stack>
+            {state.revisionRanges.map((range, index) => (
+              <KnownSurahRangeCard
+                key={range.id}
+                index={index}
+                range={range}
+                onChange={(fromSurah, toSurah) => updateRevisionRange(range.id, fromSurah, toSurah)}
+                onDelete={state.revisionRanges.length > 1 ? () => removeRevisionRange(range.id) : undefined}
+              />
+            ))}
+            <OutlineButton label="Add another revision section" onPress={addRevisionRange} />
+          </Stack>
+        </Panel>
+        <DailyTargetCard
+          icon="repeat-outline"
+          title="Daily revision target"
+          value={state.revisionLoad}
+          unit="āyāt/day"
+          note={revisionRecommendationText(state.revisionRanges)}
+          min={5}
+          max={300}
+          step={5}
+          onChange={(revisionLoad) => onPatch({ revisionLoad })}
+        />
+        <ReminderCard
+          icon="repeat-outline"
+          title="Revision reminders"
+          subtitle="Older hifz · recite in flow"
+          quote="Start from this āyah. How far can you continue?"
+          enabled={state.revisionOn}
+          onToggle={() => onPatch({ revisionOn: !state.revisionOn })}
+          active={state.revisionFreq}
+          onFrequency={(revisionFreq) => onPatch({ revisionFreq })}
+          days={state.revisionDays}
+          onToggleDay={(day) => togglePlanDay("revisionDays", day)}
+          targetId={state.revisionTargetId}
+          targetOptions={targetOptions.filter((target) => target.id !== state.newRange.id)}
+          onTarget={(revisionTargetId) => onPatch({ revisionTargetId })}
+        />
+      </View>
+
+      <View style={styles.settingsSection}>
+        <Overline>Display</Overline>
+        <ScriptSelector active={state.arabicScript ?? "uthmani"} onChange={(arabicScript) => onPatch({ arabicScript })} />
+      </View>
+
+      <View style={styles.settingsSection}>
+        <Overline>Reminder delivery</Overline>
+        <Panel style={styles.listPanel}>
+          <View style={styles.inlineActiveHours}>
+            <ActiveHoursPanel state={state} onPatch={onPatch} compact />
+          </View>
+          <Divider />
+          <SwitchRow title="Sound & haptics" subtitle="Gentle chime on prompt" value={state.soundOn} onPress={() => onPatch({ soundOn: !state.soundOn })} />
+        </Panel>
+        <Panel style={styles.notificationStatus}>
+          <Ionicons name="calendar-outline" size={20} color={colors.mint} />
           <View style={styles.flex}>
-            <Text style={styles.cardTitle}>Revision sections</Text>
-            <Text style={styles.cardSubtitle}>{revisionRecommendationText(state.revisionRanges)}</Text>
+            <Text style={styles.cardTitle}>{state.notificationsScheduled} local prompts scheduled</Text>
+            <Text style={styles.cardSubtitle}>Permission: {state.notificationPermission}. Plan refreshes when you edit settings.</Text>
           </View>
-        </View>
-        <Stack>
-          {state.revisionRanges.map((range, index) => (
-            <KnownSurahRangeCard
-              key={range.id}
-              index={index}
-              range={range}
-              onChange={(fromSurah, toSurah) => updateRevisionRange(range.id, fromSurah, toSurah)}
-              onDelete={state.revisionRanges.length > 1 ? () => removeRevisionRange(range.id) : undefined}
-            />
-          ))}
-          <OutlineButton label="Add another revision section" onPress={addRevisionRange} />
-        </Stack>
-      </Panel>
-      <DailyTargetCard
-        icon="repeat-outline"
-        title="Daily revision target"
-        value={state.revisionLoad}
-        unit="āyāt/day"
-        note={revisionRecommendationText(state.revisionRanges)}
-        min={5}
-        max={300}
-        step={5}
-        onChange={(revisionLoad) => onPatch({ revisionLoad })}
-      />
-      <Overline>Notification types</Overline>
-      <ReminderCard
-        icon="leaf-outline"
-        title="Today's Memorisation"
-        subtitle="New sabaq · one āyah at a time"
-        quote="Recite this āyah, then continue to the next one."
-        enabled={state.sabaqOn}
-        onToggle={() => onPatch({ sabaqOn: !state.sabaqOn })}
-        active={state.sabaqFreq}
-        onFrequency={(sabaqFreq) => onPatch({ sabaqFreq })}
-        days={state.sabaqDays}
-        onToggleDay={(day) => togglePlanDay("sabaqDays", day)}
-        targetId={state.sabaqTargetId}
-        targetOptions={[{ id: state.newRange.id, label: state.newRange.label }]}
-        onTarget={(sabaqTargetId) => onPatch({ sabaqTargetId })}
-      />
-      <ReminderCard
-        icon="repeat-outline"
-        title="Revision"
-        subtitle="Older hifz · recite in flow"
-        quote="Start from this āyah. How far can you continue?"
-        enabled={state.revisionOn}
-        onToggle={() => onPatch({ revisionOn: !state.revisionOn })}
-        active={state.revisionFreq}
-        onFrequency={(revisionFreq) => onPatch({ revisionFreq })}
-        days={state.revisionDays}
-        onToggleDay={(day) => togglePlanDay("revisionDays", day)}
-        targetId={state.revisionTargetId}
-        targetOptions={targetOptions.filter((target) => target.id !== state.newRange.id)}
-        onTarget={(revisionTargetId) => onPatch({ revisionTargetId })}
-      />
-      <Panel style={styles.listPanel}>
-        <SwitchRow title="Active hours only" subtitle={`${formatHour(state.activeStartHour)} - ${formatHour(state.activeEndHour)}`} value={state.hoursOn} onPress={() => onPatch({ hoursOn: !state.hoursOn })} />
-        {state.hoursOn && (
-          <View style={styles.activeHoursEditor}>
-            <Stepper
-              value={state.activeStartHour}
-              label="start"
-              onMinus={() => onPatch({ activeStartHour: Math.max(4, state.activeStartHour - 1) })}
-              onPlus={() => onPatch({ activeStartHour: Math.min(state.activeEndHour - 1, state.activeStartHour + 1) })}
-            />
-            <Text style={styles.arrowText}>→</Text>
-            <Stepper
-              value={state.activeEndHour}
-              label="end"
-              onMinus={() => onPatch({ activeEndHour: Math.max(state.activeStartHour + 1, state.activeEndHour - 1) })}
-              onPlus={() => onPatch({ activeEndHour: Math.min(23, state.activeEndHour + 1) })}
-            />
-          </View>
-        )}
-        <Divider />
-        <SwitchRow title="Sound & haptics" subtitle="Gentle chime on prompt" value={state.soundOn} onPress={() => onPatch({ soundOn: !state.soundOn })} />
-      </Panel>
-      <Panel style={styles.notificationStatus}>
-        <Ionicons name="calendar-outline" size={20} color={colors.mint} />
-        <View style={styles.flex}>
-          <Text style={styles.cardTitle}>{state.notificationsScheduled} local prompts scheduled</Text>
-          <Text style={styles.cardSubtitle}>Permission: {state.notificationPermission}. Plan refreshes when you edit settings.</Text>
-        </View>
-      </Panel>
-      <Overline style={styles.spacedOverline}>How they arrive</Overline>
-      <NotificationPreview type="TODAY'S MEMORISATION" title="Recite this āyah, then continue to the next ↓" ayah="أَمَّنْ هَذَا ٱلَّذِى يَرْزُقُكُمْ" />
-      <NotificationPreview type="REVISION" title="Start from this āyah. How far can you continue? ↓" ayah="تَبَارَكَ ٱلَّذِى بِيَدِهِ ٱلْمُلْكُ" />
+        </Panel>
+      </View>
     </ScrollView>
   );
 }
 
 function ModeScreen({ state, safeTop, onNav, onStart }: { state: AppState; safeTop: number; onNav: (screen: Screen) => void; onStart: (mode: SessionMode) => void }) {
-  const newCount = buildNewDeck(state.newRange).length;
-  const revisionCount = buildRevisionDeck(state.revisionRanges).length;
+  const newCount = buildNewDeck(state.newRange, state.arabicScript).length;
+  const revisionCount = buildRevisionDeck(state.revisionRanges, state.arabicScript).length;
   const startName = state.newRange.surah.split("·").slice(1).join("·").trim() || state.newRange.surah;
   return (
     <ScrollView style={styles.fullScreen} contentContainerStyle={[styles.settingsContent, { paddingTop: safeTop + 8 }]} showsVerticalScrollIndicator={false}>
@@ -822,14 +793,14 @@ function SessionScreen({
   onStopAt: (surah: number, ayah: number, label: string) => void;
   onResumeRevision: () => void;
 }) {
-  const deck = getDeck(state.sessionMode, { newRange: state.newRange, revisionRanges: state.revisionRanges, history: state.reviewHistory });
+  const deck = getDeck(state.sessionMode, { newRange: state.newRange, revisionRanges: state.revisionRanges, history: state.reviewHistory, arabicScript: state.arabicScript });
   const item = deck[Math.min(state.cardIndex, deck.length - 1)];
   const total = deck.length;
   const progress = sessionProgressWidth(state.cardIndex, total);
   const translateX = useRef(new Animated.Value(0)).current;
   const isRev = isRevisionFlow(item);
   const reading = isRev && state.revisionReadAyah > 0;
-  const readCard = reading ? ayahCard(item.surah ?? 0, state.revisionReadAyah) : null;
+  const readCard = reading ? ayahCard(item.surah ?? 0, state.revisionReadAyah, state.arabicScript) : null;
   const currentSurahNumber = isRev ? item.surah ?? 0 : surahNumberFromLabel(item.surah ?? "67");
   const currentAyahNumber = reading ? state.revisionReadAyah : isRev ? item.start : item.num;
   const revisionEndAyah = isRev ? item.passage[item.passage.length - 1]?.num ?? item.start : 1;
@@ -1009,13 +980,13 @@ function SessionScreen({
         </Animated.View>
       </View>
       {!isRev ? (
-        <View style={[styles.markRow, { bottom: safeBottom + 24 }]}>
+        <View style={[styles.markRow, { bottom: safeBottom + (Platform.OS === "android" ? 14 : 24) }]}>
           <MarkButton label="Forgot" sub="show soon" color={colors.red} onPress={() => onMark("forgot")} />
           <MarkButton label="Shaky" sub="review later" color={colors.goldDark} onPress={() => onMark("shaky")} />
           <MarkButton label="Solid" sub="space it out" color="#fff" filled onPress={() => onMark("solid")} />
         </View>
       ) : reading ? (
-        <View style={[styles.markRow, { bottom: safeBottom + 24 }]}>
+        <View style={[styles.markRow, { bottom: safeBottom + (Platform.OS === "android" ? 14 : 24) }]}>
           <PrimaryButton
             label={`Continue from āyah ${state.revisionReadAyah}`}
             icon="return-down-forward"
@@ -1024,11 +995,11 @@ function SessionScreen({
           />
         </View>
       ) : !state.revealed ? (
-        <View style={[styles.markRow, { bottom: safeBottom + 24 }]}>
+        <View style={[styles.markRow, { bottom: safeBottom + (Platform.OS === "android" ? 14 : 24) }]}>
           <PrimaryButton label="I've recited · mark where I stopped" icon="arrow-down" onPress={() => onPatch({ revealed: true })} style={styles.flex} />
         </View>
       ) : (
-        <View style={[styles.markRow, { bottom: safeBottom + 24 }]}>
+        <View style={[styles.markRow, { bottom: safeBottom + (Platform.OS === "android" ? 14 : 24) }]}>
           <PrimaryButton label="I reached the end · finished the sūrah" icon="checkmark" onPress={() => onMark("finished")} style={styles.flex} />
         </View>
       )}
@@ -1510,7 +1481,8 @@ function Muted({ children }: { children: React.ReactNode }) {
 }
 
 function Arabic({ children, style }: { children: React.ReactNode; style?: StyleProp<TextStyle> }) {
-  return <Text style={[styles.arabic, style]}>{children}</Text>;
+  const script = React.useContext(ArabicFontContext);
+  return <Text style={[styles.arabic, script === "indopak" && styles.indopakArabic, style]}>{children}</Text>;
 }
 
 function Overline({ children, style }: { children: React.ReactNode; style?: StyleProp<TextStyle> }) {
@@ -1540,7 +1512,9 @@ function PrimaryButton({
 }) {
   return (
     <Pressable style={[styles.primaryButton, style]} onPress={onPress}>
-      <Text style={[styles.primaryText, { color: textColor }]}>{label}</Text>
+      <Text style={[styles.primaryText, { color: textColor }]} numberOfLines={2}>
+        {label}
+      </Text>
       {icon && <Ionicons name={icon as never} size={17} color={textColor} />}
     </Pressable>
   );
@@ -1671,6 +1645,7 @@ function DailyTargetCard({
   step: number;
   onChange: (value: number) => void;
 }) {
+  const quickValues = targetQuickValues(min, max);
   return (
     <Panel style={styles.dailyTargetCard}>
       <View style={styles.settingRowInner}>
@@ -1689,6 +1664,16 @@ function DailyTargetCard({
           onMinus={() => onChange(Math.max(min, value - step))}
           onPlus={() => onChange(Math.min(max, value + step))}
         />
+        <ScrollView horizontal style={styles.targetQuickScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.targetQuickRail}>
+          {quickValues.map((quickValue) => {
+            const selected = value === quickValue;
+            return (
+              <Pressable key={quickValue} style={[styles.targetQuickChip, selected && styles.targetQuickChipSelected]} onPress={() => onChange(quickValue)}>
+                <Text style={[styles.targetQuickText, selected && styles.targetQuickTextSelected]}>{quickValue}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
     </Panel>
   );
@@ -1795,8 +1780,49 @@ function knownRevisionAyahs(ranges: SurahRange[]) {
   return ranges.reduce((total, range) => total + rangeAyahCount(range), 0);
 }
 
-function estimatedJuzFromAyahs(ayahs: number) {
-  return ayahs / (6236 / 30);
+function targetQuickValues(min: number, max: number) {
+  const base = max <= 20 ? [1, 2, 3, 5, 10, 15, 20] : [5, 10, 15, 30, 45, 60, 100, 150, 200, 250, 300];
+  return base.filter((value) => value >= min && value <= max);
+}
+
+function surahStartOrdinal(surahNumber: number) {
+  return allSurahs
+    .filter((surah) => surah.number < surahNumber)
+    .reduce((total, surah) => total + surah.ayahs, 0);
+}
+
+function ayahOrdinal(surahNumber: number, ayahNumber: number) {
+  return surahStartOrdinal(surahNumber) + ayahNumber;
+}
+
+function juzPositionForLocation(surahNumber: number, ayahNumber: number) {
+  const ordinal = ayahOrdinal(surahNumber, ayahNumber);
+  const starts = juzStarts.map(([surah, ayah], index) => ({
+    juz: index + 1,
+    ordinal: ayahOrdinal(surah, ayah)
+  }));
+  const current = starts.reduce((best, start) => (start.ordinal <= ordinal ? start : best), starts[0]);
+  const next = starts.find((start) => start.juz === current.juz + 1);
+  if (!next) return 30;
+  const span = Math.max(1, next.ordinal - current.ordinal);
+  return current.juz + Math.max(0, Math.min(0.999, (ordinal - current.ordinal) / span));
+}
+
+function estimatedJuzFromRanges(ranges: SurahRange[]) {
+  return ranges.reduce((total, range) => {
+    const from = Math.min(range.fromSurah, range.toSurah);
+    const to = Math.max(range.fromSurah, range.toSurah);
+    const toInfo = surahByNumber(to);
+    if (!toInfo) return total;
+    const start = juzPositionForLocation(from, 1);
+    const end = juzPositionForLocation(to, toInfo.ayahs);
+    return total + Math.max(0.25, end - start);
+  }, 0);
+}
+
+function formatQuarterJuz(value: number) {
+  const rounded = Math.max(0.25, Math.round(value * 4) / 4);
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(/\.25$/, ".25").replace(/\.5$/, ".5").replace(/\.75$/, ".75");
 }
 
 function recommendedRevisionAyat(ranges: SurahRange[]) {
@@ -1806,11 +1832,10 @@ function recommendedRevisionAyat(ranges: SurahRange[]) {
 }
 
 function revisionRecommendationText(ranges: SurahRange[]) {
-  const ayahs = knownRevisionAyahs(ranges);
-  const juz = estimatedJuzFromAyahs(ayahs);
+  const juz = estimatedJuzFromRanges(ranges);
   const dailyJuz = Math.max(0.25, juz / 7);
   const roundedDailyJuz = dailyJuz >= 1 ? Math.round(dailyJuz * 2) / 2 : Math.round(dailyJuz * 4) / 4;
-  return `Recommended: about ${roundedDailyJuz} juz/day (${recommendedRevisionAyat(ranges)} āyāt/day) for ${Math.max(1, Math.round(juz))} juz known`;
+  return `Recommended: about ${formatQuarterJuz(roundedDailyJuz)} juz/day (${recommendedRevisionAyat(ranges)} āyāt/day) for ${formatQuarterJuz(juz)} juz known`;
 }
 
 function recommendedNewAyat(range: MemorisationRange) {
@@ -2053,6 +2078,144 @@ function TimeBlock({ label, time, hint }: { label: string; time: string; hint: s
   );
 }
 
+function ActiveHoursPanel({
+  state,
+  onPatch,
+  compact
+}: {
+  state: AppState;
+  onPatch: (next: Partial<AppState>) => void;
+  compact?: boolean;
+}) {
+  const mode = state.activeHoursMode ?? (state.splitActiveHours ? "weekend" : "same");
+  const setMode = (activeHoursMode: AppState["activeHoursMode"]) =>
+    onPatch({
+      activeHoursMode,
+      splitActiveHours: activeHoursMode === "weekend",
+      weekdayStartHour: state.weekdayStartHour || state.activeStartHour,
+      weekdayEndHour: state.weekdayEndHour || state.activeEndHour,
+      weekendStartHour: state.weekendStartHour || state.activeStartHour,
+      weekendEndHour: state.weekendEndHour || state.activeEndHour,
+      dailyActiveHours: state.dailyActiveHours
+    });
+  const updateDailyWindow = (day: keyof Days, next: Partial<{ start: number; end: number }>) => {
+    const current = state.dailyActiveHours?.[day] ?? { start: state.activeStartHour, end: state.activeEndHour };
+    onPatch({ dailyActiveHours: { ...state.dailyActiveHours, [day]: { ...current, ...next } } });
+  };
+
+  return (
+    <Panel style={[styles.timeWindowPanel, compact && styles.compactTimeWindowPanel]}>
+      <View style={styles.activeHoursHeader}>
+        <View style={styles.flex}>
+          <Text style={styles.cardTitle}>Active hours</Text>
+          <Text style={styles.cardSubtitle} numberOfLines={3}>{activeHoursSummary(state)}</Text>
+        </View>
+        <Toggle value={state.hoursOn} onPress={() => onPatch({ hoursOn: !state.hoursOn })} />
+      </View>
+      {state.hoursOn && (
+        <>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.activeHoursModeRail}>
+            {[
+              ["same", "Every day"],
+              ["weekend", "Weekday / weekend"],
+              ["daily", "Each day"]
+            ].map(([value, label]) => {
+              const selected = mode === value;
+              return (
+                <Pressable key={value} style={[styles.activeHoursModeChip, selected && styles.activeHoursModeChipSelected]} onPress={() => setMode(value as AppState["activeHoursMode"])}>
+                  <Text style={[styles.activeHoursModeText, selected && styles.activeHoursModeTextSelected]}>{label}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+          {mode === "same" ? (
+            <TimeWindowEditor
+              label="Every day"
+              start={state.activeStartHour}
+              end={state.activeEndHour}
+              onStart={(activeStartHour) => onPatch({ activeStartHour })}
+              onEnd={(activeEndHour) => onPatch({ activeEndHour })}
+            />
+          ) : mode === "weekend" ? (
+            <>
+              <TimeWindowEditor
+                label="Mon-Fri"
+                start={state.weekdayStartHour}
+                end={state.weekdayEndHour}
+                onStart={(weekdayStartHour) => onPatch({ weekdayStartHour })}
+                onEnd={(weekdayEndHour) => onPatch({ weekdayEndHour })}
+              />
+              <TimeWindowEditor
+                label="Weekend"
+                start={state.weekendStartHour}
+                end={state.weekendEndHour}
+                onStart={(weekendStartHour) => onPatch({ weekendStartHour })}
+                onEnd={(weekendEndHour) => onPatch({ weekendEndHour })}
+              />
+            </>
+          ) : (
+            <View style={styles.dailyHoursList}>
+              {(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as Array<keyof Days>).map((day) => {
+                const window = state.dailyActiveHours?.[day] ?? { start: state.activeStartHour, end: state.activeEndHour };
+                return (
+                  <TimeWindowEditor
+                    key={day}
+                    label={day}
+                    start={window.start}
+                    end={window.end}
+                    compact
+                    onStart={(start) => updateDailyWindow(day, { start })}
+                    onEnd={(end) => updateDailyWindow(day, { end })}
+                  />
+                );
+              })}
+            </View>
+          )}
+        </>
+      )}
+    </Panel>
+  );
+}
+
+function TimeWindowEditor({
+  label,
+  start,
+  end,
+  onStart,
+  onEnd,
+  compact
+}: {
+  label: string;
+  start: number;
+  end: number;
+  onStart: (value: number) => void;
+  onEnd: (value: number) => void;
+  compact?: boolean;
+}) {
+  return (
+    <View style={[styles.timeWindowEditor, compact && styles.compactDayWindowEditor]}>
+      <View style={[styles.hoursVisual, compact && styles.compactHoursVisual]}>
+        <TimeBlock label={label.toUpperCase()} time={`${formatHour(start)} - ${formatHour(end)}`} hint="notification window" />
+      </View>
+      <View style={styles.rangeSteppers}>
+        <Stepper
+          value={start}
+          label="start"
+          onMinus={() => onStart(Math.max(0, start - 1))}
+          onPlus={() => onStart(Math.min(end - 1, start + 1))}
+        />
+        <Text style={styles.arrowText}>→</Text>
+        <Stepper
+          value={end}
+          label="end"
+          onMinus={() => onEnd(Math.max(start + 1, end - 1))}
+          onPlus={() => onEnd(Math.min(24, end + 1))}
+        />
+      </View>
+    </View>
+  );
+}
+
 function DayPicker({ days, onToggle }: { days: Days; onToggle: (day: keyof Days) => void }) {
   return (
     <View style={styles.days}>
@@ -2062,6 +2225,33 @@ function DayPicker({ days, onToggle }: { days: Days; onToggle: (day: keyof Days)
         </Pressable>
       ))}
     </View>
+  );
+}
+
+function ScriptSelector({ active, onChange }: { active: ArabicScript; onChange: (script: ArabicScript) => void }) {
+  return (
+    <Panel style={styles.scriptPanel}>
+      <View style={styles.settingRowInner}>
+        <View style={styles.iconTile}>
+          <Ionicons name="text-outline" size={20} color={colors.mint} />
+        </View>
+        <View style={styles.flex}>
+          <Text style={styles.cardTitle}>Arabic script</Text>
+          <Text style={styles.cardSubtitle}>Choose the mushaf style used across cards and revision lists.</Text>
+        </View>
+      </View>
+      <Segmented
+        values={["uthmani", "indopak"]}
+        labels={["Uthmani", "IndoPak"]}
+        active={active}
+        onChange={(value) => onChange(value as ArabicScript)}
+      />
+      <View style={styles.scriptPreview}>
+        <Arabic style={active === "indopak" ? styles.scriptPreviewIndopak : styles.scriptPreviewArabic}>
+          بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+        </Arabic>
+      </View>
+    </Panel>
   );
 }
 
@@ -2299,9 +2489,18 @@ function SettingsRow({ icon, label, meta, onPress }: { icon: string; label: stri
 }
 
 function formatHour(hour: number) {
+  if (hour === 24) return "12:00 am";
   const suffix = hour < 12 ? "am" : "pm";
   const display = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
   return `${display}:00 ${suffix}`;
+}
+
+function activeHoursSummary(state: AppState) {
+  if (!state.hoursOn) return "Any time";
+  const mode = state.activeHoursMode ?? (state.splitActiveHours ? "weekend" : "same");
+  if (mode === "same") return `${formatHour(state.activeStartHour)} - ${formatHour(state.activeEndHour)} every day`;
+  if (mode === "weekend") return `Mon-Fri ${formatHour(state.weekdayStartHour)}-${formatHour(state.weekdayEndHour)} · Weekend ${formatHour(state.weekendStartHour)}-${formatHour(state.weekendEndHour)}`;
+  return "Custom time window for each day";
 }
 
 function formatDueDate(value: string) {
@@ -2710,6 +2909,9 @@ const styles = StyleSheet.create({
     textAlign: "right",
     fontFamily: "Uthmani"
   },
+  indopakArabic: {
+    fontFamily: "IndoPak"
+  },
   surahName: {
     fontSize: 30,
     color: colors.green
@@ -2826,6 +3028,61 @@ const styles = StyleSheet.create({
     marginTop: 22,
     gap: 14
   },
+  compactTimeWindowPanel: {
+    marginTop: 0,
+    padding: 0,
+    backgroundColor: "transparent",
+    shadowOpacity: 0,
+    elevation: 0
+  },
+  inlineActiveHours: {
+    paddingVertical: 14
+  },
+  activeHoursHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    minWidth: 0
+  },
+  activeHoursModeRail: {
+    gap: 8,
+    paddingVertical: 2,
+    paddingRight: 8
+  },
+  activeHoursModeChip: {
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    backgroundColor: "#fffdf8",
+    borderRadius: 999,
+    paddingVertical: 9,
+    paddingHorizontal: 13
+  },
+  activeHoursModeChipSelected: {
+    backgroundColor: colors.green,
+    borderColor: colors.green
+  },
+  activeHoursModeText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "900"
+  },
+  activeHoursModeTextSelected: {
+    color: "#fff"
+  },
+  timeWindowEditor: {
+    gap: 10
+  },
+  compactDayWindowEditor: {
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    paddingTop: 10
+  },
+  dailyHoursList: {
+    gap: 10
+  },
+  compactHoursVisual: {
+    gap: 0
+  },
   timeWindowGrid: {
     flexDirection: "row",
     gap: 10
@@ -2845,7 +3102,7 @@ const styles = StyleSheet.create({
     fontWeight: "800"
   },
   timeText: {
-    fontSize: 20,
+    fontSize: Platform.OS === "android" ? 16 : 18,
     fontWeight: "800",
     color: colors.text,
     textAlign: "center"
@@ -2921,19 +3178,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12
   },
+  footerFirst: {
+    justifyContent: "center"
+  },
+  footerSoloButton: {
+    width: "78%",
+    maxWidth: 320
+  },
   primaryButton: {
-    height: 52,
+    minHeight: 52,
     borderRadius: 16,
     backgroundColor: colors.green,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    gap: 8
+    gap: 8,
+    paddingHorizontal: 14
   },
   primaryText: {
     fontSize: 14.5,
     fontWeight: "800",
-    lineHeight: 18
+    lineHeight: 18,
+    textAlign: "center",
+    flexShrink: 1
   },
   outlineButton: {
     height: 52,
@@ -3157,6 +3424,9 @@ const styles = StyleSheet.create({
     paddingTop: 18,
     gap: 12
   },
+  settingsSection: {
+    gap: 12
+  },
   header: {
     paddingTop: 2,
     paddingBottom: 10,
@@ -3172,11 +3442,66 @@ const styles = StyleSheet.create({
   reminderCard: {
     gap: 12
   },
+  scriptPanel: {
+    gap: 12
+  },
+  scriptPreview: {
+    minHeight: 82,
+    borderRadius: 16,
+    backgroundColor: colors.paper,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 14
+  },
+  scriptPreviewArabic: {
+    fontSize: 24,
+    lineHeight: 44,
+    color: colors.green,
+    textAlign: "center"
+  },
+  scriptPreviewIndopak: {
+    fontSize: 27,
+    lineHeight: 48,
+    color: colors.green,
+    textAlign: "center"
+  },
   dailyTargetCard: {
     gap: 12
   },
   dailyTargetControls: {
-    alignItems: "flex-start"
+    width: "100%",
+    alignItems: "center",
+    gap: 10
+  },
+  targetQuickScroll: {
+    width: "100%"
+  },
+  targetQuickRail: {
+    gap: 8,
+    paddingHorizontal: 2,
+    paddingVertical: 2
+  },
+  targetQuickChip: {
+    minWidth: 44,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.lineDark,
+    backgroundColor: "#fffdf8",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignItems: "center"
+  },
+  targetQuickChipSelected: {
+    backgroundColor: colors.green,
+    borderColor: colors.green
+  },
+  targetQuickText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "900"
+  },
+  targetQuickTextSelected: {
+    color: "#fff"
   },
   revisionSettingsPanel: {
     gap: 12
@@ -3358,13 +3683,13 @@ const styles = StyleSheet.create({
   },
   cardStack: {
     position: "absolute",
-    left: 22,
-    right: 22,
-    top: 130,
-    bottom: 112
+    left: Platform.OS === "android" ? 16 : 22,
+    right: Platform.OS === "android" ? 16 : 22,
+    top: Platform.OS === "android" ? 112 : 130,
+    bottom: Platform.OS === "android" ? 142 : 112
   },
   memoriseCardStack: {
-    bottom: 164
+    bottom: Platform.OS === "android" ? 158 : 112
   },
   behindCard: {
     position: "absolute",
@@ -3376,23 +3701,26 @@ const styles = StyleSheet.create({
     ...shadow
   },
   behindCardOne: {
-    top: 14,
-    left: 8,
-    right: 8,
+    top: Platform.OS === "android" ? 10 : 14,
+    left: 0,
+    right: 0,
     opacity: 0.5
   },
   behindCardTwo: {
-    top: 7,
-    left: 4,
-    right: 4,
+    top: Platform.OS === "android" ? 5 : 7,
+    left: 0,
+    right: 0,
     opacity: 0.75
   },
   practiceCard: {
     position: "absolute",
-    inset: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     backgroundColor: "#fff",
-    borderRadius: 30,
-    padding: 24,
+    borderRadius: Platform.OS === "android" ? 24 : 30,
+    padding: Platform.OS === "android" ? 18 : 24,
     alignItems: "center",
     overflow: "hidden",
     ...heavyShadow
@@ -3400,10 +3728,10 @@ const styles = StyleSheet.create({
   modeChip: {
     borderRadius: 20,
     paddingVertical: 7,
-    paddingHorizontal: 18,
+    paddingHorizontal: 14,
     backgroundColor: colors.mintPale,
     color: "#2f5d4f",
-    fontSize: 11.5,
+    fontSize: Platform.OS === "android" ? 10.5 : 11.5,
     fontWeight: "900",
     letterSpacing: 1
   },
@@ -3439,15 +3767,15 @@ const styles = StyleSheet.create({
     lineHeight: 17
   },
   memoriseArabic: {
-    fontSize: 27,
+    fontSize: Platform.OS === "android" ? 24 : 27,
     color: "#1f2d27",
-    lineHeight: 54,
+    lineHeight: Platform.OS === "android" ? 46 : 54,
     textAlign: "center"
   },
   promptArabic: {
-    fontSize: 30,
+    fontSize: Platform.OS === "android" ? 25 : 30,
     color: "#1f2d27",
-    lineHeight: 58,
+    lineHeight: Platform.OS === "android" ? 48 : 58,
     textAlign: "center"
   },
   revealBlock: {
@@ -3492,48 +3820,48 @@ const styles = StyleSheet.create({
   },
   markRow: {
     position: "absolute",
-    left: 22,
-    right: 22,
+    left: Platform.OS === "android" ? 18 : 22,
+    right: Platform.OS === "android" ? 18 : 22,
     bottom: 30,
     flexDirection: "row",
-    gap: 9
+    gap: Platform.OS === "android" ? 7 : 9
   },
   markButton: {
     flex: 1,
     minWidth: 0,
-    minHeight: 72,
-    borderRadius: 20,
+    minHeight: Platform.OS === "android" ? 58 : 72,
+    borderRadius: Platform.OS === "android" ? 16 : 20,
     borderWidth: 1.5,
     backgroundColor: "#fffdf8",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 7,
+    paddingVertical: Platform.OS === "android" ? 8 : 10,
+    paddingHorizontal: 6,
     ...shadow
   },
   markFilled: {
     backgroundColor: colors.mint
   },
   markIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: Platform.OS === "android" ? 20 : 28,
+    height: Platform.OS === "android" ? 20 : 28,
+    borderRadius: Platform.OS === "android" ? 10 : 14,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 6
+    marginBottom: Platform.OS === "android" ? 4 : 6
   },
   markCopy: {
     alignItems: "center",
     minWidth: 0
   },
   markLabel: {
-    fontSize: 13,
+    fontSize: Platform.OS === "android" ? 12 : 13,
     fontWeight: "900",
     lineHeight: 17,
     textAlign: "center"
   },
   markSub: {
-    fontSize: 10,
+    fontSize: Platform.OS === "android" ? 9.5 : 10,
     color: colors.muted,
     marginTop: 2,
     lineHeight: 13,
@@ -3542,10 +3870,12 @@ const styles = StyleSheet.create({
   revisionBody: {
     flex: 1,
     width: "100%",
-    alignItems: "center"
+    alignItems: "center",
+    minHeight: 0
   },
   revisionStart: {
     flex: 1,
+    width: "100%",
     alignItems: "center",
     justifyContent: "center"
   },
@@ -3553,33 +3883,35 @@ const styles = StyleSheet.create({
     backgroundColor: colors.mintPale,
     borderRadius: 14,
     paddingVertical: 11,
-    paddingHorizontal: 18,
+    paddingHorizontal: 14,
     color: "#2f5d4f",
-    fontSize: 13,
+    fontSize: Platform.OS === "android" ? 12 : 13,
     fontWeight: "800",
     marginTop: 26
   },
   revisionScroll: {
     width: "100%",
-    flex: 1
+    flex: 1,
+    minHeight: 0
   },
   revisionScrollBody: {
-    paddingBottom: 12
+    paddingBottom: Platform.OS === "android" ? 340 : 132
   },
   stuckHint: {
     backgroundColor: colors.goldPale,
     borderRadius: 12,
-    padding: 10,
+    padding: Platform.OS === "android" ? 8 : 10,
     color: colors.goldDark,
     fontWeight: "900",
     textAlign: "center",
-    marginBottom: 8
+    marginBottom: 8,
+    fontSize: Platform.OS === "android" ? 11.5 : 12
   },
   juzJumpPanel: {
     width: "100%",
     backgroundColor: colors.paper,
     borderRadius: 14,
-    padding: 10,
+    padding: Platform.OS === "android" ? 8 : 10,
     marginBottom: 8,
     gap: 8
   },
@@ -3635,7 +3967,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 10,
-    paddingVertical: 10,
+    paddingVertical: Platform.OS === "android" ? 7 : 10,
     borderBottomWidth: 1,
     borderBottomColor: "#f4efe5"
   },
@@ -3653,9 +3985,9 @@ const styles = StyleSheet.create({
   },
   passageText: {
     flex: 1,
-    fontSize: 21,
+    fontSize: Platform.OS === "android" ? 18.5 : 21,
     color: colors.ink,
-    lineHeight: 42
+    lineHeight: Platform.OS === "android" ? 35 : 42
   },
   doneContent: {
     paddingHorizontal: 26,

@@ -230,9 +230,31 @@ function nextPrompt(state: AppState) {
   if (state.revisionOn) freqs.push(freqMinutes(state.revisionFreq));
   if (!freqs.length) return { time: "Off", inLabel: "no reminders on" };
   const step = Math.min(...freqs);
-  const startMin = (state.hoursOn ? state.activeStartHour : 7) * 60;
-  const endMin = (state.hoursOn ? state.activeEndHour : 22) * 60;
   const now = new Date();
+  const dayKeys = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+  const day = dayKeys[now.getDay()];
+  const mode = state.activeHoursMode ?? (state.splitActiveHours ? "weekend" : "same");
+  const weekend = day === "Sat" || day === "Sun";
+  const startHour = !state.hoursOn
+    ? 7
+    : mode === "daily"
+      ? state.dailyActiveHours?.[day]?.start ?? state.activeStartHour
+      : mode === "weekend"
+        ? weekend
+          ? state.weekendStartHour
+          : state.weekdayStartHour
+        : state.activeStartHour;
+  const endHour = !state.hoursOn
+    ? 22
+    : mode === "daily"
+      ? state.dailyActiveHours?.[day]?.end ?? state.activeEndHour
+      : mode === "weekend"
+        ? weekend
+          ? state.weekendEndHour
+          : state.weekdayEndHour
+        : state.activeEndHour;
+  const startMin = startHour * 60;
+  const endMin = endHour * 60;
   const nowMin = now.getHours() * 60 + now.getMinutes();
   let nextMin: number;
   if (nowMin < startMin) nextMin = startMin;

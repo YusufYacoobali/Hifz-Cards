@@ -41,6 +41,13 @@ export function useHifzAppState() {
       revisionDays: state.revisionDays,
       activeStartHour: state.activeStartHour,
       activeEndHour: state.activeEndHour,
+      activeHoursMode: state.activeHoursMode,
+      splitActiveHours: state.splitActiveHours,
+      weekdayStartHour: state.weekdayStartHour,
+      weekdayEndHour: state.weekdayEndHour,
+      weekendStartHour: state.weekendStartHour,
+      weekendEndHour: state.weekendEndHour,
+      dailyActiveHours: state.dailyActiveHours,
       hoursOn: state.hoursOn,
       soundOn: state.soundOn,
       newRange: state.newRange,
@@ -48,7 +55,8 @@ export function useHifzAppState() {
       sabaqTargetId: state.sabaqTargetId,
       revisionTargetId: state.revisionTargetId,
       revisionProgressIndex: state.revisionProgressIndex,
-      revisionProgressAyah: state.revisionProgressAyah
+      revisionProgressAyah: state.revisionProgressAyah,
+      arabicScript: state.arabicScript
     }).then((result) => {
       setState((current) => ({
         ...current,
@@ -66,6 +74,13 @@ export function useHifzAppState() {
     state.revisionDays,
     state.activeStartHour,
     state.activeEndHour,
+    state.activeHoursMode,
+    state.splitActiveHours,
+    state.weekdayStartHour,
+    state.weekdayEndHour,
+    state.weekendStartHour,
+    state.weekendEndHour,
+    state.dailyActiveHours,
     state.hoursOn,
     state.soundOn,
     state.newRange,
@@ -73,7 +88,8 @@ export function useHifzAppState() {
     state.sabaqTargetId,
     state.revisionTargetId,
     state.revisionProgressIndex,
-    state.revisionProgressAyah
+    state.revisionProgressAyah,
+    state.arabicScript
   ]);
 
   useEffect(() => {
@@ -101,7 +117,7 @@ export function useHifzAppState() {
   const patch = (next: Partial<AppState>) => setState((current) => ({ ...current, ...next }));
   const nav = (screen: Screen) => patch({ screen });
   const beginApp = () => patch({ screen: "home" });
-  const deckContext = { newRange: state.newRange, revisionRanges: state.revisionRanges, history: state.reviewHistory };
+  const deckContext = { newRange: state.newRange, revisionRanges: state.revisionRanges, history: state.reviewHistory, arabicScript: state.arabicScript };
 
   const startSession = (mode: SessionMode) => {
     const deck = getDeck(mode, deckContext);
@@ -214,7 +230,8 @@ function routeNotificationToState(current: AppState, data: Record<string, unknow
   const deckContext = {
     newRange: current.newRange,
     revisionRanges: current.revisionRanges,
-    history: current.reviewHistory
+    history: current.reviewHistory,
+    arabicScript: current.arabicScript
   };
   const deck = getDeck(mode, deckContext);
   const surah = Number(data.surah) || 0;

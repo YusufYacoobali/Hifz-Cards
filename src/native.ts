@@ -4,7 +4,7 @@ import * as StoreReview from "expo-store-review";
 import { Platform } from "react-native";
 import { buildNewDeck, buildRevisionDeck } from "./deck";
 import { firstWords } from "./quran";
-import { Days, MemorisationRange, SessionMode, SurahRange } from "./types";
+import { ActiveHoursMode, ArabicScript, DailyActiveHours, Days, MemorisationRange, SessionMode, SurahRange } from "./types";
 
 export type ReminderSettings = {
   sabaqOn: boolean;
@@ -15,6 +15,13 @@ export type ReminderSettings = {
   revisionDays: Days;
   activeStartHour: number;
   activeEndHour: number;
+  activeHoursMode: ActiveHoursMode;
+  splitActiveHours: boolean;
+  weekdayStartHour: number;
+  weekdayEndHour: number;
+  weekendStartHour: number;
+  weekendEndHour: number;
+  dailyActiveHours: DailyActiveHours;
   hoursOn: boolean;
   soundOn: boolean;
   newRange: MemorisationRange;
@@ -23,6 +30,7 @@ export type ReminderSettings = {
   revisionTargetId: string;
   revisionProgressIndex: number;
   revisionProgressAyah: number;
+  arabicScript?: ArabicScript;
 };
 
 const REVIEW_KEY = "hifz:last-native-review";
@@ -121,25 +129,24 @@ function buildNotificationPlan(settings: ReminderSettings) {
     cardIndex: number;
   }> = [];
   const dayNames: Array<keyof Days> = ["Sun" as never, "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const activeFrom = settings.hoursOn ? settings.activeStartHour * 60 : 7 * 60;
-  const activeUntil = settings.hoursOn ? settings.activeEndHour * 60 : 22 * 60;
   const now = new Date();
   const maxItems = 48;
-  const newCards = buildNewDeck(settings.newRange);
-  const revisionCards = buildRevisionDeck(settings.revisionRanges);
+  const newCards = buildNewDeck(settings.newRange, settings.arabicScript);
+  const revisionCards = buildRevisionDeck(settings.revisionRanges, settings.arabicScript);
   const newSurah = surahNumberOf(settings.newRange.surah);
 
   for (let dayOffset = 0; dayOffset < 14 && plan.length < maxItems; dayOffset += 1) {
     const day = new Date(now);
     day.setDate(now.getDate() + dayOffset);
     const label = dayNames[day.getDay()];
+    const window = activeWindowForDay(settings, label);
 
     const slots: Array<{ minute: number; type: "sabaq" | "revision" }> = [];
     if (settings.sabaqOn && settings.sabaqDays[label]) {
-      addIntervalSlots(slots, "sabaq", activeFrom + 30, activeUntil, frequencyMinutes(settings.sabaqFreq));
+      addIntervalSlots(slots, "sabaq", window.from + 30, window.until, frequencyMinutes(settings.sabaqFreq));
     }
     if (settings.revisionOn && settings.revisionDays[label]) {
-      addIntervalSlots(slots, "revision", activeFrom + 90, activeUntil, frequencyMinutes(settings.revisionFreq));
+      addIntervalSlots(slots, "revision", window.from + 90, window.until, frequencyMinutes(settings.revisionFreq));
     }
     slots
       .sort((a, b) => a.minute - b.minute)
@@ -186,6 +193,28 @@ function buildNotificationPlan(settings: ReminderSettings) {
   }
 
   return plan;
+}
+
+function activeWindowForDay(settings: ReminderSettings, day: keyof Days) {
+  if (!settings.hoursOn) return { from: 7 * 60, until: 22 * 60 };
+  const mode = settings.activeHoursMode ?? (settings.splitActiveHours ? "weekend" : "same");
+  if (mode === "daily") {
+    const window = settings.dailyActiveHours?.[day];
+    return { from: (window?.start ?? settings.activeStartHour) * 60, until: (window?.end ?? settings.activeEndHour) * 60 };
+  }
+  const weekend = day === "Sat" || day === "Sun";
+  const grouped = mode === "weekend";
+  const fromHour = grouped
+    ? weekend
+      ? settings.weekendStartHour
+      : settings.weekdayStartHour
+    : settings.activeStartHour;
+  const untilHour = grouped
+    ? weekend
+      ? settings.weekendEndHour
+      : settings.weekdayEndHour
+    : settings.activeEndHour;
+  return { from: fromHour * 60, until: untilHour * 60 };
 }
 
 function addIntervalSlots(slots: Array<{ minute: number; type: "sabaq" | "revision" }>, type: "sabaq" | "revision", start: number, end: number, step: number) {

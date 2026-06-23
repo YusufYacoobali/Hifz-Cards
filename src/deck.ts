@@ -3,7 +3,7 @@ import { HifzCard, revisionFlows, RevisionFlow, newDeck, weakDeck } from "./data
 import { ayahText, ayahTranslation, firstWords, surahVerses } from "./quran";
 import { allSurahs } from "./surahs";
 import { colors } from "./theme";
-import { MemorisationRange, ReviewRecord, SessionMode, SurahRange } from "./types";
+import { ArabicScript, MemorisationRange, ReviewRecord, SessionMode, SurahRange } from "./types";
 
 export type PracticeItem = HifzCard | RevisionFlow;
 
@@ -11,6 +11,7 @@ export type DeckContext = {
   newRange: MemorisationRange;
   revisionRanges: SurahRange[];
   history?: ReviewRecord[];
+  arabicScript?: ArabicScript;
 };
 
 // How many new āyāt to surface in one sabaq session, counting from the start point.
@@ -27,9 +28,9 @@ function surahMeta(number: number) {
 }
 
 // Build a single memorisation card (full āyah + Hilali/Khan translation) for any sūrah:āyah.
-export function ayahCard(surah: number, ayah: number): HifzCard {
+export function ayahCard(surah: number, ayah: number, script: ArabicScript = "uthmani"): HifzCard {
   const meta = surahMeta(surah);
-  const text = ayahText(surah, ayah);
+  const text = ayahText(surah, ayah, script);
   return {
     num: ayah,
     prompt: firstWords(text, 4),
@@ -41,10 +42,10 @@ export function ayahCard(surah: number, ayah: number): HifzCard {
 }
 
 // New memorisation: the next āyāt starting from where the user is, moving forward to the end.
-export function buildNewDeck(newRange: MemorisationRange): HifzCard[] {
+export function buildNewDeck(newRange: MemorisationRange, script: ArabicScript = "uthmani"): HifzCard[] {
   const number = surahNumberOf(newRange.surah);
   const meta = surahMeta(number);
-  const verses = surahVerses(number);
+  const verses = surahVerses(number, script);
   if (!verses.length) return newDeck;
   const start = Math.max(1, newRange.from || 1);
   return verses
@@ -61,7 +62,7 @@ export function buildNewDeck(newRange: MemorisationRange): HifzCard[] {
 }
 
 // Weak deck = āyāt the user marked shaky/forgot/stuck, newest first, de-duplicated.
-export function buildWeakDeck(history: ReviewRecord[] = []): HifzCard[] {
+export function buildWeakDeck(history: ReviewRecord[] = [], script: ArabicScript = "uthmani"): HifzCard[] {
   const seen = new Set<string>();
   const cards: HifzCard[] = [];
   for (const record of history) {
@@ -71,14 +72,14 @@ export function buildWeakDeck(history: ReviewRecord[] = []): HifzCard[] {
     const key = `${record.surah}:${record.ayah}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    const card = ayahCard(record.surah, record.ayah);
+    const card = ayahCard(record.surah, record.ayah, script);
     if (card.full) cards.push(card);
   }
   return cards;
 }
 
 // Revision: each known sūrah becomes a flow you recite end-to-end, tapping where you stop.
-export function buildRevisionDeck(ranges: SurahRange[]): RevisionFlow[] {
+export function buildRevisionDeck(ranges: SurahRange[], script: ArabicScript = "uthmani"): RevisionFlow[] {
   const numbers: number[] = [];
   ranges.forEach((range) => {
     const from = Math.min(range.fromSurah, range.toSurah);
@@ -89,7 +90,7 @@ export function buildRevisionDeck(ranges: SurahRange[]): RevisionFlow[] {
   const flows = unique
     .map((number) => {
       const meta = surahMeta(number);
-      const passage = surahVerses(number);
+      const passage = surahVerses(number, script);
       if (!passage.length) return null;
       return {
         start: 1,
@@ -104,16 +105,16 @@ export function buildRevisionDeck(ranges: SurahRange[]): RevisionFlow[] {
 
 export function getDeck(mode: SessionMode, ctx?: DeckContext): PracticeItem[] {
   if (mode === "weak") {
-    const built = buildWeakDeck(ctx?.history);
+    const built = buildWeakDeck(ctx?.history, ctx?.arabicScript);
     return built.length ? built : weakDeck;
   }
   if (mode === "revision") {
     if (!ctx) return revisionFlows;
-    const built = buildRevisionDeck(ctx.revisionRanges);
+    const built = buildRevisionDeck(ctx.revisionRanges, ctx.arabicScript);
     return built.length ? built : revisionFlows;
   }
   if (!ctx) return newDeck;
-  const built = buildNewDeck(ctx.newRange);
+  const built = buildNewDeck(ctx.newRange, ctx.arabicScript);
   return built.length ? built : newDeck;
 }
 

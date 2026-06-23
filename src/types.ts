@@ -3,6 +3,8 @@ export type Goal = "new" | "revision" | "both";
 export type SessionMode = "new" | "revision" | "weak";
 export type ResultStatus = "solid" | "shaky" | "forgot" | "finished" | string;
 export type CommunityMode = "solo" | "friends" | "class";
+export type ActiveHoursMode = "same" | "weekend" | "daily";
+export type ArabicScript = "uthmani" | "indopak";
 
 export type ReviewRecord = {
   id: string;
@@ -23,6 +25,8 @@ export type Days = {
   Sat: boolean;
   Sun: boolean;
 };
+
+export type DailyActiveHours = Record<keyof Days, { start: number; end: number }>;
 
 export type MemorisationRange = {
   id: string;
@@ -55,6 +59,13 @@ export type AppState = {
   revisionRanges: SurahRange[];
   activeStartHour: number;
   activeEndHour: number;
+  activeHoursMode: ActiveHoursMode;
+  splitActiveHours: boolean;
+  weekdayStartHour: number;
+  weekdayEndHour: number;
+  weekendStartHour: number;
+  weekendEndHour: number;
+  dailyActiveHours: DailyActiveHours;
   hoursOn: boolean;
   soundOn: boolean;
   sabaqOn: boolean;
@@ -82,6 +93,7 @@ export type AppState = {
   communityMode: CommunityMode;
   reviewHistory: ReviewRecord[];
   reciterId: string;
+  arabicScript: ArabicScript;
 };
 
 export const weekdays: Days = { Mon: true, Tue: true, Wed: true, Thu: true, Fri: true, Sat: false, Sun: false };
@@ -115,6 +127,21 @@ export const initialState: AppState = {
   ],
   activeStartHour: 6,
   activeEndHour: 21,
+  activeHoursMode: "same",
+  splitActiveHours: false,
+  weekdayStartHour: 6,
+  weekdayEndHour: 22,
+  weekendStartHour: 8,
+  weekendEndHour: 24,
+  dailyActiveHours: {
+    Mon: { start: 6, end: 22 },
+    Tue: { start: 6, end: 22 },
+    Wed: { start: 6, end: 22 },
+    Thu: { start: 6, end: 22 },
+    Fri: { start: 6, end: 22 },
+    Sat: { start: 8, end: 24 },
+    Sun: { start: 8, end: 24 }
+  },
   hoursOn: true,
   soundOn: true,
   sabaqOn: true,
@@ -141,5 +168,6 @@ export const initialState: AppState = {
   notificationAutoplayAyah: 0,
   communityMode: "solo",
   reviewHistory: [],
-  reciterId: "alafasy"
+  reciterId: "alafasy",
+  arabicScript: "uthmani"
 };
