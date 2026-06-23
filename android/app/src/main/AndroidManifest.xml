@@ -31,7 +31,6 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="hifzcards"/>
-        <data android:scheme="exp+hifz-cards"/>
       </intent-filter>
     </activity>
   </application>
