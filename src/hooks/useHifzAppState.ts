@@ -67,7 +67,8 @@ export function useHifzAppState() {
     revisionTargetId: state.revisionTargetId,
     revisionProgressIndex: state.revisionProgressIndex,
     revisionProgressAyah: state.revisionProgressAyah,
-    arabicScript: state.arabicScript
+    arabicScript: state.arabicScript,
+    revisionOrder: state.revisionOrder
   };
   const settingsRef = useRef(reminderSettings);
   settingsRef.current = reminderSettings;
@@ -148,14 +149,18 @@ export function useHifzAppState() {
   const patch = (next: Partial<AppState>) => setState((current) => ({ ...current, ...next }));
   const nav = (screen: Screen) => patch({ screen });
   const beginApp = () => patch({ screen: "home" });
-  const deckContext = { newRange: state.newRange, revisionRanges: state.revisionRanges, history: state.reviewHistory, arabicScript: state.arabicScript };
+  const deckContext = { newRange: state.newRange, revisionRanges: state.revisionRanges, history: state.reviewHistory, arabicScript: state.arabicScript, revisionOrder: state.revisionOrder };
 
-  const startSession = (mode: SessionMode) => {
+  const startSession = (mode: SessionMode, startIndex?: number) => {
     const deck = getDeck(mode, deckContext);
-    const revisionIndex = Math.min(Math.max(0, state.revisionProgressIndex), Math.max(0, deck.length - 1));
+    // When the user explicitly picks a sūrah ("I'll choose"), start there from āyah 1; otherwise resume.
+    const picked = startIndex !== undefined;
+    const revisionIndex = picked
+      ? Math.min(Math.max(0, startIndex), Math.max(0, deck.length - 1))
+      : Math.min(Math.max(0, state.revisionProgressIndex), Math.max(0, deck.length - 1));
     const revisionItem = deck[revisionIndex];
     const revisionEndAyah = isRevisionFlow(revisionItem) ? revisionItem.passage[revisionItem.passage.length - 1]?.num ?? 1 : 1;
-    const revisionAyah = Math.min(revisionEndAyah, Math.max(1, state.revisionProgressAyah || 1));
+    const revisionAyah = picked ? 1 : Math.min(revisionEndAyah, Math.max(1, state.revisionProgressAyah || 1));
     patch({
       screen: "session",
       sessionMode: mode,
@@ -164,6 +169,8 @@ export function useHifzAppState() {
       revealed: false,
       revisionReadAyah: 0,
       revisionResumeAyah: mode === "revision" ? revisionAyah : 0,
+      revisionProgressIndex: mode === "revision" ? revisionIndex : state.revisionProgressIndex,
+      revisionProgressAyah: picked ? 1 : state.revisionProgressAyah,
       results: {}
     });
   };
@@ -207,34 +214,43 @@ export function useHifzAppState() {
       next.revisionProgressIndex = wrapped ? 0 : state.cardIndex + 1;
       next.revisionProgressAyah = 1;
       if (wrapped) next.revisionRounds = (state.revisionRounds ?? 0) + 1;
+      const flowEnd = item.passage[item.passage.length - 1]?.num ?? item.start;
+      const resume = Math.max(item.start, state.revisionResumeAyah || item.start);
+      Object.assign(next, dailyRevisionFields(state, flowEnd - resume + 1));
     }
     patch(next);
     setTimeout(advance, 120);
   };
 
-  // Revision: user taps the āyah where they got stuck — optionally record it as weak, then enter "read" mode.
-  const stopAtAyah = (surah: number, ayah: number, label: string, addWeak: boolean) => {
-    const key = `${surah}:${ayah}`;
-    const next: Partial<AppState> = {
+  // Revision: user taps the āyah where they got stuck — enter "read" mode to practise it.
+  const stopAtAyah = (surah: number, ayah: number) => {
+    const covered = Math.max(1, ayah - (state.revisionResumeAyah || ayah));
+    patch({
       revisionReadAyah: ayah,
       revisionResumeAyah: ayah,
       revisionProgressIndex: state.cardIndex,
-      revisionProgressAyah: ayah
+      revisionProgressAyah: ayah,
+      ...dailyRevisionFields(state, covered)
+    });
+  };
+
+  // Add the āyah currently being practised to the weak deck (from the read-mode button).
+  const addReadWeak = (surah: number, ayah: number, label: string) => {
+    const key = `${surah}:${ayah}`;
+    if (state.results[key]) return;
+    const record: ReviewRecord = {
+      id: `revision-${key}-${Date.now()}`,
+      mode: "revision",
+      ayahLabel: `${surahNameOf(label)} ${ayah}`,
+      result: `stuck@${ayah}`,
+      timestamp: new Date().toISOString(),
+      surah,
+      ayah
     };
-    if (addWeak) {
-      const record: ReviewRecord = {
-        id: `revision-${key}-${Date.now()}`,
-        mode: "revision",
-        ayahLabel: `${surahNameOf(label)} ${ayah}`,
-        result: `stuck@${ayah}`,
-        timestamp: new Date().toISOString(),
-        surah,
-        ayah
-      };
-      next.results = { ...state.results, [key]: `stuck@${ayah}` };
-      next.reviewHistory = [record, ...(state.reviewHistory ?? [])].slice(0, 80);
-    }
-    patch(next);
+    patch({
+      results: { ...state.results, [key]: `stuck@${ayah}` },
+      reviewHistory: [record, ...(state.reviewHistory ?? [])].slice(0, 80)
+    });
   };
 
   // Revision read mode: after practising the missed āyah, return to the same revision flow.
@@ -254,8 +270,16 @@ export function useHifzAppState() {
     advance,
     markCard,
     stopAtAyah,
+    addReadWeak,
     resumeRevision
   };
+}
+
+// Track āyāt revised today (resets when the calendar day changes).
+function dailyRevisionFields(state: AppState, covered: number): Partial<AppState> {
+  const today = new Date().toDateString();
+  const base = state.revisionDoneDate === today ? state.revisionDoneToday : 0;
+  return { revisionDoneDate: today, revisionDoneToday: base + Math.max(0, covered) };
 }
 
 function routeNotificationToState(current: AppState, data: Record<string, unknown>): AppState {
@@ -266,7 +290,8 @@ function routeNotificationToState(current: AppState, data: Record<string, unknow
     newRange: current.newRange,
     revisionRanges: current.revisionRanges,
     history: current.reviewHistory,
-    arabicScript: current.arabicScript
+    arabicScript: current.arabicScript,
+    revisionOrder: current.revisionOrder
   };
   const deck = getDeck(mode, deckContext);
   const surah = Number(data.surah) || 0;

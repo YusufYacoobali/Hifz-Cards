@@ -6,6 +6,7 @@ export type CommunityMode = "solo" | "friends" | "class";
 export type ActiveHoursMode = "same" | "weekend" | "daily";
 export type ArabicScript = "uthmani" | "indopak";
 export type ArabicSize = "small" | "medium" | "large";
+export type RevisionOrder = "forward" | "backward" | "select";
 
 export const arabicSizeScale: Record<ArabicSize, number> = { small: 0.85, medium: 1, large: 1.2 };
 
@@ -88,6 +89,9 @@ export type AppState = {
   revisionProgressIndex: number;
   revisionProgressAyah: number;
   revisionRounds: number;
+  revisionOrder: RevisionOrder;
+  revisionDoneToday: number;
+  revisionDoneDate: string;
   sessionPhase: "idle" | "running" | "done";
   results: Record<string, ResultStatus>;
   notificationsScheduled: number;
@@ -112,7 +116,7 @@ export const initialState: AppState = {
   ayahTo: 30,
   perDay: 3,
   knownUpTo: 11,
-  revisionLoad: 20,
+  revisionLoad: 30,
   freq: "30 min",
   newRange: {
     id: "new-67",
@@ -125,9 +129,9 @@ export const initialState: AppState = {
   revisionRanges: [
     {
       id: "rev-default",
-      fromSurah: 114,
+      fromSurah: 1,
       toSurah: 114,
-      label: "114 · An-Nas"
+      label: "Al-Fatihah → An-Nas"
     }
   ],
   activeStartHour: 6,
@@ -166,6 +170,9 @@ export const initialState: AppState = {
   revisionProgressIndex: 0,
   revisionProgressAyah: 1,
   revisionRounds: 0,
+  revisionOrder: "forward",
+  revisionDoneToday: 0,
+  revisionDoneDate: "",
   sessionPhase: "idle",
   results: {},
   notificationsScheduled: 0,

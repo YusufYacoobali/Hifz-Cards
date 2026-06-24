@@ -35,7 +35,7 @@ import { playAyah, prefetchAyat, stopAyah } from "./src/audio";
 import { reciterById, reciters } from "./src/reciters";
 import { allSurahs, SurahInfo } from "./src/surahs";
 import { colors, heavyShadow, shadow } from "./src/theme";
-import { AppState, ArabicScript, ArabicSize, arabicSizeScale, Days, MemorisationRange, ResultStatus, Screen, SessionMode, SurahRange } from "./src/types";
+import { AppState, ArabicScript, ArabicSize, arabicSizeScale, Days, MemorisationRange, ResultStatus, RevisionOrder, Screen, SessionMode, SurahRange } from "./src/types";
 
 const ArabicFontContext = React.createContext<ArabicScript>("uthmani");
 
@@ -53,7 +53,7 @@ export default function App() {
 }
 
 function AppContent() {
-  const { state, showTabs, patch, nav, beginApp, startSession, markCard, stopAtAyah, resumeRevision } = useHifzAppState();
+  const { state, showTabs, patch, nav, beginApp, startSession, markCard, stopAtAyah, addReadWeak, resumeRevision } = useHifzAppState();
   const insets = useSafeAreaInsets();
   const safe = {
     top: Math.max(insets.top, Platform.OS === "ios" ? 44 : 0),
@@ -75,7 +75,7 @@ function AppContent() {
             />
           )}
           {state.screen === "home" && <HomeScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onNav={nav} onModes={() => nav("modes")} />}
-          {state.screen === "notif" && <NotificationsScreen state={state} safeTop={safe.top} onPatch={patch} onNav={nav} />}
+          {state.screen === "notif" && <NotificationsScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onPatch={patch} onNav={nav} />}
           {state.screen === "modes" && <ModeScreen state={state} safeTop={safe.top} onNav={nav} onStart={startSession} />}
           {state.screen === "session" && (
             <SessionScreen
@@ -87,6 +87,7 @@ function AppContent() {
               onStart={startSession}
               onMark={markCard}
               onStopAt={stopAtAyah}
+              onAddWeak={addReadWeak}
               onResumeRevision={resumeRevision}
             />
           )}
@@ -360,6 +361,23 @@ function NewOnboardingScreen({
                 days={state.revisionDays}
                 onToggleDay={(day) => onPatch({ revisionDays: { ...state.revisionDays, [day]: !state.revisionDays[day] } })}
               />
+              <Panel>
+                <View style={styles.settingRowInner}>
+                  <View style={styles.iconTile}>
+                    <Ionicons name="swap-vertical-outline" size={20} color={colors.mint} />
+                  </View>
+                  <View style={styles.flex}>
+                    <Text style={styles.cardTitle}>Revision order</Text>
+                    <Text style={styles.cardSubtitle}>How to move through what you know — you always resume where you left off.</Text>
+                  </View>
+                </View>
+                <Segmented
+                  values={["forward", "backward", "select"]}
+                  labels={["Front → back", "Back → front", "I'll choose"]}
+                  active={state.revisionOrder ?? "forward"}
+                  onChange={(value) => onPatch({ revisionOrder: value as RevisionOrder, revisionProgressIndex: 0, revisionProgressAyah: 1 })}
+                />
+              </Panel>
               <DailyTargetCard
                 icon="repeat-outline"
                 title="Daily revision target"
@@ -509,11 +527,11 @@ function HomeScreen({
               <View style={styles.flex}>
                 <Overline>Today</Overline>
                 <Text style={styles.cardTitle}>
-                  {state.sabaqOn ? `${state.perDay} new/day` : "New paused"} · {state.revisionOn ? `${revision.remaining} āyāt to revise` : "revision off"}
+                  {state.sabaqOn ? `${state.perDay} new/day` : "New paused"} · {state.revisionOn ? `${revision.remainingToday} āyāt to revise today` : "revision off"}
                 </Text>
                 <Text style={styles.cardSubtitle}>
                   {state.revisionOn
-                    ? `Revision round ${revision.rounds + 1} · ${revision.done} of ${revision.total} āyāt done`
+                    ? `${revision.doneToday}/${revision.dailyTarget} revised today · round ${revision.rounds + 1}`
                     : `New memorisation continues from ${dashboard.currentSurah} ${dashboard.rangeLabel}.`}
                 </Text>
               </View>
@@ -571,11 +589,13 @@ function HomeScreen({
 function NotificationsScreen({
   state,
   safeTop,
+  safeBottom,
   onPatch,
   onNav
 }: {
   state: AppState;
   safeTop: number;
+  safeBottom: number;
   onPatch: (next: Partial<AppState>) => void;
   onNav: (screen: Screen) => void;
 }) {
@@ -622,7 +642,7 @@ function NotificationsScreen({
   };
 
   return (
-    <ScrollView style={styles.fullScreen} contentContainerStyle={[styles.settingsContent, { paddingTop: safeTop + 8 }]} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.fullScreen} contentContainerStyle={[styles.settingsContent, { paddingTop: safeTop + 8, paddingBottom: safeBottom + (Platform.OS === "android" ? 48 : 32) }]} showsVerticalScrollIndicator={false}>
       <Header title="Card settings" onBack={() => onNav("home")} />
       <View style={styles.settingsSection}>
         <Overline>New memorisation</Overline>
@@ -666,9 +686,6 @@ function NotificationsScreen({
           onFrequency={(sabaqFreq) => onPatch({ sabaqFreq })}
           days={state.sabaqDays}
           onToggleDay={(day) => togglePlanDay("sabaqDays", day)}
-          targetId={state.sabaqTargetId}
-          targetOptions={[{ id: state.newRange.id, label: state.newRange.label }]}
-          onTarget={(sabaqTargetId) => onPatch({ sabaqTargetId })}
         />
       </View>
 
@@ -719,16 +736,19 @@ function NotificationsScreen({
           onFrequency={(revisionFreq) => onPatch({ revisionFreq })}
           days={state.revisionDays}
           onToggleDay={(day) => togglePlanDay("revisionDays", day)}
-          targetId={state.revisionTargetId}
-          targetOptions={targetOptions.filter((target) => target.id !== state.newRange.id)}
-          onTarget={(revisionTargetId) => onPatch({ revisionTargetId })}
+          order={state.revisionOrder ?? "forward"}
+          onOrder={(revisionOrder) => onPatch({ revisionOrder, revisionProgressIndex: 0, revisionProgressAyah: 1 })}
         />
       </View>
 
       <View style={styles.settingsSection}>
         <Overline>Display</Overline>
-        <ScriptSelector active={state.arabicScript ?? "uthmani"} onChange={(arabicScript) => onPatch({ arabicScript })} />
-        <ArabicSizeSelector active={state.arabicSize ?? "medium"} onChange={(arabicSize) => onPatch({ arabicSize })} />
+        <ArabicDisplayCard
+          script={state.arabicScript ?? "uthmani"}
+          size={state.arabicSize ?? "medium"}
+          onScript={(arabicScript) => onPatch({ arabicScript })}
+          onSize={(arabicSize) => onPatch({ arabicSize })}
+        />
       </View>
 
       <View style={styles.settingsSection}>
@@ -752,10 +772,12 @@ function NotificationsScreen({
   );
 }
 
-function ModeScreen({ state, safeTop, onNav, onStart }: { state: AppState; safeTop: number; onNav: (screen: Screen) => void; onStart: (mode: SessionMode) => void }) {
+function ModeScreen({ state, safeTop, onNav, onStart }: { state: AppState; safeTop: number; onNav: (screen: Screen) => void; onStart: (mode: SessionMode, startIndex?: number) => void }) {
   const newCount = buildNewDeck(state.newRange, state.arabicScript).length;
-  const revisionCount = buildRevisionDeck(state.revisionRanges, state.arabicScript).length;
+  const revisionDeck = buildRevisionDeck(state.revisionRanges, state.arabicScript, state.revisionOrder);
+  const revisionCount = revisionDeck.length;
   const startName = state.newRange.surah.split("·").slice(1).join("·").trim() || state.newRange.surah;
+  const pickMode = (state.revisionOrder ?? "forward") === "select";
   return (
     <ScrollView style={styles.fullScreen} contentContainerStyle={[styles.settingsContent, { paddingTop: safeTop + 8 }]} showsVerticalScrollIndicator={false}>
       <Header title="Choose your session" onBack={() => onNav("home")} />
@@ -770,10 +792,21 @@ function ModeScreen({ state, safeTop, onNav, onStart }: { state: AppState; safeT
       <ModeCard
         icon="repeat-outline"
         title="Revision Flow Cards"
-        subtitle={`${revisionCount} sūrah${revisionCount === 1 ? "" : "s"} from what you've memorised`}
+        subtitle={pickMode ? `${revisionCount} sūrah${revisionCount === 1 ? "" : "s"} · pick one below` : `${revisionCount} sūrah${revisionCount === 1 ? "" : "s"} from what you've memorised`}
         quote="Start from this āyah. How far can you continue?"
         onPress={() => onStart("revision")}
       />
+      {pickMode && (
+        <View style={styles.revisionPickList}>
+          {revisionDeck.map((flow, index) => (
+            <Pressable key={flow.surah ?? index} style={styles.revisionPickRow} onPress={() => onStart("revision", index)}>
+              <Text style={styles.revisionPickBadge}>{flow.surah}</Text>
+              <Text style={styles.revisionPickLabel}>{flow.label}</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.faint} />
+            </Pressable>
+          ))}
+        </View>
+      )}
       <ModeCard
         icon="warning-outline"
         title="Weak Spot Cards"
@@ -795,6 +828,7 @@ function SessionScreen({
   onStart,
   onMark,
   onStopAt,
+  onAddWeak,
   onResumeRevision
 }: {
   state: AppState;
@@ -804,7 +838,8 @@ function SessionScreen({
   onPatch: (next: Partial<AppState>) => void;
   onStart: (mode: SessionMode) => void;
   onMark: (status: ResultStatus) => void;
-  onStopAt: (surah: number, ayah: number, label: string, addWeak: boolean) => void;
+  onStopAt: (surah: number, ayah: number) => void;
+  onAddWeak: (surah: number, ayah: number, label: string) => void;
   onResumeRevision: () => void;
 }) {
   const deck = getDeck(state.sessionMode, { newRange: state.newRange, revisionRanges: state.revisionRanges, history: state.reviewHistory, arabicScript: state.arabicScript });
@@ -818,6 +853,7 @@ function SessionScreen({
   const readCard = reading ? ayahCard(item.surah ?? 0, state.revisionReadAyah, state.arabicScript) : null;
   const currentSurahNumber = isRev ? item.surah ?? 0 : surahNumberFromLabel(item.surah ?? "67");
   const currentAyahNumber = reading ? state.revisionReadAyah : isRev ? item.start : item.num;
+  const readAlreadyWeak = reading && !!state.results[`${currentSurahNumber}:${state.revisionReadAyah}`];
   const revisionEndAyah = isRev ? item.passage[item.passage.length - 1]?.num ?? item.start : 1;
   const revisionStartAyah = isRev ? Math.min(revisionEndAyah, Math.max(item.start, state.revisionResumeAyah || item.start)) : 1;
 
@@ -978,18 +1014,10 @@ function SessionScreen({
               item={item}
               startAt={revisionStartAyah}
               revealed={state.revealed}
+              script={state.arabicScript}
               onReveal={() => onPatch({ revealed: true })}
               arScale={arScale}
-              onStuck={(ayah) =>
-                Alert.alert(
-                  `Stopped at āyah ${ayah}`,
-                  "Add this āyah to your weak cards to drill later?",
-                  [
-                    { text: "Just practise", onPress: () => onStopAt(item.surah ?? 0, ayah, item.label, false) },
-                    { text: "Add to weak", onPress: () => onStopAt(item.surah ?? 0, ayah, item.label, true) }
-                  ]
-                )
-              }
+              onStuck={(ayah) => onStopAt(item.surah ?? 0, ayah)}
             />
           ) : (
             <AyahCard card={item} arScale={arScale} />
@@ -1012,6 +1040,13 @@ function SessionScreen({
         </View>
       ) : reading ? (
         <View style={[styles.markRow, { bottom: safeBottom + (Platform.OS === "android" ? 20 : 28) }]}>
+          <PrimaryButton
+            label={readAlreadyWeak ? "In weak ✓" : "Add to weak"}
+            icon={readAlreadyWeak ? "checkmark" : "bookmark-outline"}
+            onPress={() => onAddWeak(currentSurahNumber, state.revisionReadAyah, isRevisionFlow(item) ? item.label : "")}
+            style={readAlreadyWeak ? styles.weakActionDone : styles.weakActionButton}
+            textColor={colors.green}
+          />
           <PrimaryButton
             label={`Continue from āyah ${state.revisionReadAyah}`}
             icon="return-down-forward"
@@ -1415,6 +1450,7 @@ function RevisionCard({
   item,
   startAt,
   revealed,
+  script,
   onReveal,
   onStuck,
   arScale = 1
@@ -1422,6 +1458,7 @@ function RevisionCard({
   item: RevisionFlow;
   startAt: number;
   revealed: boolean;
+  script: ArabicScript;
   onReveal: () => void;
   onStuck: (ayah: number) => void;
   arScale?: number;
@@ -1435,13 +1472,16 @@ function RevisionCard({
   const currentJuz = juzForLocation(item.surah ?? 1, startAt);
   return (
     <View style={styles.revisionBody}>
-      <Text style={styles.sessionMeta}>Sūrah {item.label} · from āyah {startAt}</Text>
       {!revealed ? (
-        <Pressable style={styles.revisionStart} onPress={onReveal}>
-          <Arabic style={[styles.promptArabic, { fontSize: 30 * arScale, lineHeight: 58 * arScale }]}>{firstAyah?.text}</Arabic>
-          <Text style={styles.revisionPill}>Recite from memory — how far can you go?</Text>
-        </Pressable>
+        <AyahCard
+          card={ayahCard(item.surah ?? 1, startAt, script)}
+          note="Recite from memory — how far can you go?"
+          arScale={arScale}
+        />
       ) : (
+        <Text style={styles.sessionMeta}>Sūrah {item.label} · from āyah {startAt}</Text>
+      )}
+      {revealed && (
         <>
           <View style={styles.revisionHeaderBar}>
             <Text style={styles.revisionHeaderText}>Tap the āyah you stop at</Text>
@@ -1861,26 +1901,38 @@ function clampSurahRange(from: number, to: number, ranges: SurahRange[], exclude
   return { from: lo, to: hi };
 }
 
-// A sensible new range: the highest free block, ending at the last sūrah when possible.
+// A sensible new range: start at the first free sūrah (Al-Fātiḥah or the next one after a
+// previous range), then extend forward as far as possible — up to An-Nās (114).
 function nextFreeRange(ranges: SurahRange[]) {
   const covered = coveredSurahs(ranges);
-  let hi = 114;
-  while (hi >= 1 && covered.has(hi)) hi -= 1;
-  if (hi < 1) return null;
-  let lo = hi;
-  while (lo - 1 >= 1 && !covered.has(lo - 1)) lo -= 1;
+  let lo = 1;
+  while (lo <= 114 && covered.has(lo)) lo += 1;
+  if (lo > 114) return null;
+  let hi = lo;
+  while (hi + 1 <= 114 && !covered.has(hi + 1)) hi += 1;
   return { from: lo, to: hi };
 }
 
 // Total āyāt across the user's revision ranges, and how many remain in the current round.
 function revisionTotals(state: AppState) {
-  const deck = buildRevisionDeck(state.revisionRanges, state.arabicScript);
+  const deck = buildRevisionDeck(state.revisionRanges, state.arabicScript, state.revisionOrder);
   const total = deck.reduce((sum, flow) => sum + flow.passage.length, 0);
   const idx = Math.min(Math.max(0, state.revisionProgressIndex), Math.max(0, deck.length - 1));
   let done = 0;
   for (let i = 0; i < idx; i += 1) done += deck[i].passage.length;
   done += Math.max(0, (state.revisionProgressAyah || 1) - 1);
-  return { total, done, remaining: Math.max(0, total - done), rounds: state.revisionRounds ?? 0 };
+  const dailyTarget = Math.max(1, state.revisionLoad || 1);
+  const doneToday = state.revisionDoneDate === new Date().toDateString() ? state.revisionDoneToday ?? 0 : 0;
+  const remainingToday = Math.max(0, dailyTarget - doneToday);
+  return {
+    total,
+    done,
+    remaining: Math.max(0, total - done),
+    rounds: state.revisionRounds ?? 0,
+    dailyTarget,
+    doneToday,
+    remainingToday
+  };
 }
 
 function activeDayCount(days: Days) {
@@ -2347,7 +2399,18 @@ function DayPicker({ days, onToggle }: { days: Days; onToggle: (day: keyof Days)
   );
 }
 
-function ScriptSelector({ active, onChange }: { active: ArabicScript; onChange: (script: ArabicScript) => void }) {
+function ArabicDisplayCard({
+  script,
+  size,
+  onScript,
+  onSize
+}: {
+  script: ArabicScript;
+  size: ArabicSize;
+  onScript: (script: ArabicScript) => void;
+  onSize: (size: ArabicSize) => void;
+}) {
+  const scale = arabicSizeScale[size] ?? 1;
   return (
     <Panel style={styles.scriptPanel}>
       <View style={styles.settingRowInner}>
@@ -2355,46 +2418,31 @@ function ScriptSelector({ active, onChange }: { active: ArabicScript; onChange: 
           <Ionicons name="text-outline" size={20} color={colors.mint} />
         </View>
         <View style={styles.flex}>
-          <Text style={styles.cardTitle}>Arabic script</Text>
-          <Text style={styles.cardSubtitle}>Choose the mushaf style used across cards and revision lists.</Text>
+          <Text style={styles.cardTitle}>Arabic display</Text>
+          <Text style={styles.cardSubtitle}>Script and size for āyāt across cards and revision lists.</Text>
         </View>
       </View>
+      <Overline>Script</Overline>
       <Segmented
         values={["uthmani", "indopak"]}
         labels={["Uthmani", "IndoPak"]}
-        active={active}
-        onChange={(value) => onChange(value as ArabicScript)}
+        active={script}
+        onChange={(value) => onScript(value as ArabicScript)}
       />
-      <View style={styles.scriptPreview}>
-        <Arabic style={active === "indopak" ? styles.scriptPreviewIndopak : styles.scriptPreviewArabic}>
-          بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
-        </Arabic>
-      </View>
-    </Panel>
-  );
-}
-
-function ArabicSizeSelector({ active, onChange }: { active: ArabicSize; onChange: (size: ArabicSize) => void }) {
-  const scale = arabicSizeScale[active] ?? 1;
-  return (
-    <Panel style={styles.scriptPanel}>
-      <View style={styles.settingRowInner}>
-        <View style={styles.iconTile}>
-          <Ionicons name="resize-outline" size={20} color={colors.mint} />
-        </View>
-        <View style={styles.flex}>
-          <Text style={styles.cardTitle}>Arabic text size</Text>
-          <Text style={styles.cardSubtitle}>How large the āyāt appear on memorisation and revision cards.</Text>
-        </View>
-      </View>
+      <Overline style={styles.spacedOverline}>Text size</Overline>
       <Segmented
         values={["small", "medium", "large"]}
         labels={["Small", "Medium", "Large"]}
-        active={active}
-        onChange={(value) => onChange(value as ArabicSize)}
+        active={size}
+        onChange={(value) => onSize(value as ArabicSize)}
       />
       <View style={styles.scriptPreview}>
-        <Arabic style={[styles.scriptPreviewArabic, { fontSize: 24 * scale, lineHeight: 44 * scale }]}>
+        <Arabic
+          style={[
+            script === "indopak" ? styles.scriptPreviewIndopak : styles.scriptPreviewArabic,
+            { fontSize: 24 * scale, lineHeight: 44 * scale }
+          ]}
+        >
           بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
         </Arabic>
       </View>
@@ -2425,9 +2473,8 @@ function ReminderCard({
   onFrequency,
   days,
   onToggleDay,
-  targetId,
-  targetOptions,
-  onTarget,
+  order,
+  onOrder,
   warn
 }: {
   icon: string;
@@ -2440,9 +2487,8 @@ function ReminderCard({
   onFrequency: (value: string) => void;
   days: Days;
   onToggleDay: (day: keyof Days) => void;
-  targetId: string;
-  targetOptions: Array<{ id: string; label: string }>;
-  onTarget: (value: string) => void;
+  order?: RevisionOrder;
+  onOrder?: (value: RevisionOrder) => void;
   warn?: boolean;
 }) {
   return (
@@ -2460,8 +2506,17 @@ function ReminderCard({
       <Text style={styles.reminderQuote}>“{quote}”</Text>
       <Overline>Frequency</Overline>
       <FrequencyScroller active={active} onChange={onFrequency} />
-      <Overline>What to go over</Overline>
-      <TargetScroller options={targetOptions} active={targetId} onChange={onTarget} />
+      {order && onOrder && (
+        <>
+          <Overline>Revision order</Overline>
+          <Segmented
+            values={["forward", "backward", "select"]}
+            labels={["Front → back", "Back → front", "I'll choose"]}
+            active={order}
+            onChange={(value) => onOrder(value as RevisionOrder)}
+          />
+        </>
+      )}
       <Overline>Days</Overline>
       <DayPicker days={days} onToggle={onToggleDay} />
     </Panel>
@@ -3808,6 +3863,33 @@ const styles = StyleSheet.create({
     gap: 13,
     ...shadow
   },
+  revisionPickList: {
+    gap: 8,
+    marginTop: -4
+  },
+  revisionPickRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14
+  },
+  revisionPickBadge: {
+    minWidth: 26,
+    color: colors.mint,
+    fontWeight: "900",
+    textAlign: "center"
+  },
+  revisionPickLabel: {
+    flex: 1,
+    color: colors.text,
+    fontWeight: "800",
+    fontSize: 14
+  },
   modeTitle: {
     fontSize: 16,
     color: colors.text,
@@ -3990,6 +4072,16 @@ const styles = StyleSheet.create({
     bottom: 30,
     flexDirection: "row",
     gap: Platform.OS === "android" ? 7 : 9
+  },
+  weakActionButton: {
+    backgroundColor: colors.gold,
+    paddingHorizontal: 16,
+    flexGrow: 0
+  },
+  weakActionDone: {
+    backgroundColor: colors.mintPale,
+    paddingHorizontal: 16,
+    flexGrow: 0
   },
   markButton: {
     flex: 1,

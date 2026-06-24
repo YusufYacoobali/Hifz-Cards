@@ -3,7 +3,7 @@ import { HifzCard, revisionFlows, RevisionFlow, newDeck, weakDeck } from "./data
 import { ayahText, ayahTranslation, firstWords, surahVerses } from "./quran";
 import { allSurahs } from "./surahs";
 import { colors } from "./theme";
-import { ArabicScript, MemorisationRange, ReviewRecord, SessionMode, SurahRange } from "./types";
+import { ArabicScript, MemorisationRange, ReviewRecord, RevisionOrder, SessionMode, SurahRange } from "./types";
 
 export type PracticeItem = HifzCard | RevisionFlow;
 
@@ -12,6 +12,7 @@ export type DeckContext = {
   revisionRanges: SurahRange[];
   history?: ReviewRecord[];
   arabicScript?: ArabicScript;
+  revisionOrder?: RevisionOrder;
 };
 
 // How many new āyāt to surface in one sabaq session, counting from the start point.
@@ -79,14 +80,20 @@ export function buildWeakDeck(history: ReviewRecord[] = [], script: ArabicScript
 }
 
 // Revision: each known sūrah becomes a flow you recite end-to-end, tapping where you stop.
-export function buildRevisionDeck(ranges: SurahRange[], script: ArabicScript = "uthmani"): RevisionFlow[] {
+export function buildRevisionDeck(
+  ranges: SurahRange[],
+  script: ArabicScript = "uthmani",
+  order: RevisionOrder = "forward"
+): RevisionFlow[] {
   const numbers: number[] = [];
   ranges.forEach((range) => {
     const from = Math.min(range.fromSurah, range.toSurah);
     const to = Math.max(range.fromSurah, range.toSurah);
     for (let surah = from; surah <= to; surah += 1) numbers.push(surah);
   });
-  const unique = Array.from(new Set(numbers)).slice(0, MAX_REVISION_SURAHS);
+  let ordered = Array.from(new Set(numbers));
+  if (order === "backward") ordered = ordered.reverse();
+  const unique = ordered.slice(0, MAX_REVISION_SURAHS);
   const flows = unique
     .map((number) => {
       const meta = surahMeta(number);
@@ -110,7 +117,7 @@ export function getDeck(mode: SessionMode, ctx?: DeckContext): PracticeItem[] {
   }
   if (mode === "revision") {
     if (!ctx) return revisionFlows;
-    const built = buildRevisionDeck(ctx.revisionRanges, ctx.arabicScript);
+    const built = buildRevisionDeck(ctx.revisionRanges, ctx.arabicScript, ctx.revisionOrder);
     return built.length ? built : revisionFlows;
   }
   if (!ctx) return newDeck;

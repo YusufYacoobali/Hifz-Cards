@@ -4,7 +4,7 @@ import * as StoreReview from "expo-store-review";
 import { AppState as RNAppState, Platform } from "react-native";
 import { buildNewDeck, buildRevisionDeck } from "./deck";
 import { firstWords } from "./quran";
-import { ActiveHoursMode, ArabicScript, DailyActiveHours, Days, MemorisationRange, SessionMode, SurahRange } from "./types";
+import { ActiveHoursMode, ArabicScript, DailyActiveHours, Days, MemorisationRange, RevisionOrder, SessionMode, SurahRange } from "./types";
 
 // Minutes after the user leaves the app before the "come back" reminder fires.
 export const COMEBACK_DELAY_MIN = 20;
@@ -34,6 +34,7 @@ export type ReminderSettings = {
   revisionProgressIndex: number;
   revisionProgressAyah: number;
   arabicScript?: ArabicScript;
+  revisionOrder?: RevisionOrder;
 };
 
 const REVIEW_KEY = "hifz:last-native-review";
@@ -141,7 +142,7 @@ function buildNotificationPlan(settings: ReminderSettings) {
   const now = new Date();
   const maxItems = 48;
   const newCards = buildNewDeck(settings.newRange, settings.arabicScript);
-  const revisionCards = buildRevisionDeck(settings.revisionRanges, settings.arabicScript);
+  const revisionCards = buildRevisionDeck(settings.revisionRanges, settings.arabicScript, settings.revisionOrder);
   const newSurah = surahNumberOf(settings.newRange.surah);
 
   for (let dayOffset = 0; dayOffset < 14 && plan.length < maxItems; dayOffset += 1) {
@@ -150,12 +151,16 @@ function buildNotificationPlan(settings: ReminderSettings) {
     const label = dayNames[day.getDay()];
     const window = activeWindowForDay(settings, label);
 
+    // Start reminders at the active-hours start time. When both services run, nudge revision a
+    // few minutes later so the two notifications don't land on the exact same minute.
+    const bothOn =
+      settings.sabaqOn && settings.sabaqDays[label] && settings.revisionOn && settings.revisionDays[label];
     const slots: Array<{ minute: number; type: "sabaq" | "revision" }> = [];
     if (settings.sabaqOn && settings.sabaqDays[label]) {
-      addIntervalSlots(slots, "sabaq", window.from + 30, window.until, frequencyMinutes(settings.sabaqFreq));
+      addIntervalSlots(slots, "sabaq", window.from, window.until, frequencyMinutes(settings.sabaqFreq));
     }
     if (settings.revisionOn && settings.revisionDays[label]) {
-      addIntervalSlots(slots, "revision", window.from + 90, window.until, frequencyMinutes(settings.revisionFreq));
+      addIntervalSlots(slots, "revision", window.from + (bothOn ? 5 : 0), window.until, frequencyMinutes(settings.revisionFreq));
     }
     slots
       .sort((a, b) => a.minute - b.minute)
@@ -280,7 +285,7 @@ function comebackContent(settings: ReminderSettings) {
       }
     };
   }
-  const revisionCards = buildRevisionDeck(settings.revisionRanges, settings.arabicScript);
+  const revisionCards = buildRevisionDeck(settings.revisionRanges, settings.arabicScript, settings.revisionOrder);
   const idx = Math.min(Math.max(0, settings.revisionProgressIndex), Math.max(0, revisionCards.length - 1));
   const revision = revisionCards[idx];
   const startAyah = revision ? Math.max(revision.start, settings.revisionProgressAyah || revision.start) : 1;
