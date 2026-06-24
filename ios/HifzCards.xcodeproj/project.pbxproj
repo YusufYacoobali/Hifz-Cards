@@ -8,28 +8,28 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		21EC2833F90010E74F0FF980 /* libPods-HifzCards.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0737A2E2888840306D7998B1 /* libPods-HifzCards.a */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		46E674CA7A852F1A9F4F93F1 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F2122F1CDD7E9C97DAFBDC4 /* ExpoModulesProvider.swift */; };
-		A3C51121B1B454CA50E9C14E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 75D1CD5E34ADEAF83F8171C0 /* PrivacyInfo.xcprivacy */; };
+		4DDB91CA953CA35E96BC17B9 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F83AA8D0410F5A4D9555545B /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		C54FCCEBE39998C612ACB919 /* libPods-HifzCards.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0FCA7A5FA8E4B6B791675980 /* libPods-HifzCards.a */; };
+		CA944AD0FE0E50E0377B94B6 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = BF347565F83BEB330660E875 /* PrivacyInfo.xcprivacy */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		0737A2E2888840306D7998B1 /* libPods-HifzCards.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-HifzCards.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		0FCA7A5FA8E4B6B791675980 /* libPods-HifzCards.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-HifzCards.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07F961A680F5B00A75B9A /* HifzCards.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HifzCards.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = HifzCards/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = HifzCards/Info.plist; sourceTree = "<group>"; };
-		5E4AB543839EFC9E7150FC38 /* Pods-HifzCards.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HifzCards.release.xcconfig"; path = "Target Support Files/Pods-HifzCards/Pods-HifzCards.release.xcconfig"; sourceTree = "<group>"; };
-		5F2122F1CDD7E9C97DAFBDC4 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-HifzCards/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		75D1CD5E34ADEAF83F8171C0 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = HifzCards/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = HifzCards/SplashScreen.storyboard; sourceTree = "<group>"; };
-		B2C6B083A56977CE79332EF4 /* Pods-HifzCards.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HifzCards.debug.xcconfig"; path = "Target Support Files/Pods-HifzCards/Pods-HifzCards.debug.xcconfig"; sourceTree = "<group>"; };
+		B72436B82F3482F02716DF21 /* Pods-HifzCards.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HifzCards.release.xcconfig"; path = "Target Support Files/Pods-HifzCards/Pods-HifzCards.release.xcconfig"; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
+		BF347565F83BEB330660E875 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = HifzCards/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = HifzCards/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* HifzCards-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "HifzCards-Bridging-Header.h"; path = "HifzCards/HifzCards-Bridging-Header.h"; sourceTree = "<group>"; };
+		F737CD8447E9F323D0F628A7 /* Pods-HifzCards.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-HifzCards.debug.xcconfig"; path = "Target Support Files/Pods-HifzCards/Pods-HifzCards.debug.xcconfig"; sourceTree = "<group>"; };
+		F83AA8D0410F5A4D9555545B /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-HifzCards/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,13 +37,21 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				21EC2833F90010E74F0FF980 /* libPods-HifzCards.a in Frameworks */,
+				C54FCCEBE39998C612ACB919 /* libPods-HifzCards.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0D2B6DE048B664DF987F9345 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				3F8D518C0DC53C0BA39C519C /* HifzCards */,
+			);
+			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
 		13B07FAE1A68108700A75B9A /* HifzCards */ = {
 			isa = PBXGroup;
 			children = (
@@ -53,32 +61,24 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				75D1CD5E34ADEAF83F8171C0 /* PrivacyInfo.xcprivacy */,
+				BF347565F83BEB330660E875 /* PrivacyInfo.xcprivacy */,
 			);
 			name = HifzCards;
-			sourceTree = "<group>";
-		};
-		254A47F149F77CDC26277801 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				56A8DFE16EA7349410AEDFAD /* HifzCards */,
-			);
-			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				0737A2E2888840306D7998B1 /* libPods-HifzCards.a */,
+				0FCA7A5FA8E4B6B791675980 /* libPods-HifzCards.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		56A8DFE16EA7349410AEDFAD /* HifzCards */ = {
+		3F8D518C0DC53C0BA39C519C /* HifzCards */ = {
 			isa = PBXGroup;
 			children = (
-				5F2122F1CDD7E9C97DAFBDC4 /* ExpoModulesProvider.swift */,
+				F83AA8D0410F5A4D9555545B /* ExpoModulesProvider.swift */,
 			);
 			name = HifzCards;
 			sourceTree = "<group>";
@@ -97,8 +97,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				AF1B52FF02E911093498F181 /* Pods */,
-				254A47F149F77CDC26277801 /* ExpoModulesProviders */,
+				CA6E53227E9AC8BD508627D1 /* Pods */,
+				0D2B6DE048B664DF987F9345 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -113,15 +113,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		AF1B52FF02E911093498F181 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				B2C6B083A56977CE79332EF4 /* Pods-HifzCards.debug.xcconfig */,
-				5E4AB543839EFC9E7150FC38 /* Pods-HifzCards.release.xcconfig */,
-			);
-			path = Pods;
-			sourceTree = "<group>";
-		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
 			isa = PBXGroup;
 			children = (
@@ -129,6 +120,15 @@
 			);
 			name = Supporting;
 			path = HifzCards/Supporting;
+			sourceTree = "<group>";
+		};
+		CA6E53227E9AC8BD508627D1 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				F737CD8447E9F323D0F628A7 /* Pods-HifzCards.debug.xcconfig */,
+				B72436B82F3482F02716DF21 /* Pods-HifzCards.release.xcconfig */,
+			);
+			path = Pods;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -139,13 +139,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "HifzCards" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				69A5A78CC85EB55E0EF1960B /* [Expo] Configure project */,
+				7972CC016146325B8188BCC9 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				82C8DAF84872F679F4065803 /* [CP] Embed Pods Frameworks */,
+				E093D821FCEF4AE6CC9912D9 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -195,7 +195,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				A3C51121B1B454CA50E9C14E /* PrivacyInfo.xcprivacy in Resources */,
+				CA944AD0FE0E50E0377B94B6 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -241,7 +241,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		69A5A78CC85EB55E0EF1960B /* [Expo] Configure project */ = {
+		7972CC016146325B8188BCC9 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -303,7 +303,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-HifzCards/Pods-HifzCards-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		82C8DAF84872F679F4065803 /* [CP] Embed Pods Frameworks */ = {
+		E093D821FCEF4AE6CC9912D9 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -329,7 +329,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				46E674CA7A852F1A9F4F93F1 /* ExpoModulesProvider.swift in Sources */,
+				4DDB91CA953CA35E96BC17B9 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -338,7 +338,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = B2C6B083A56977CE79332EF4 /* Pods-HifzCards.debug.xcconfig */;
+			baseConfigurationReference = F737CD8447E9F323D0F628A7 /* Pods-HifzCards.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -364,7 +364,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = com.hifzcards.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yacoobali.hifz;
 				PRODUCT_NAME = HifzCards;
 				SWIFT_OBJC_BRIDGING_HEADER = "HifzCards/HifzCards-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -376,7 +376,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 5E4AB543839EFC9E7150FC38 /* Pods-HifzCards.release.xcconfig */;
+			baseConfigurationReference = B72436B82F3482F02716DF21 /* Pods-HifzCards.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -397,7 +397,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.hifzcards.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yacoobali.hifz;
 				PRODUCT_NAME = HifzCards;
 				SWIFT_OBJC_BRIDGING_HEADER = "HifzCards/HifzCards-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;

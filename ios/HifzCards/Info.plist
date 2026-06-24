@@ -28,7 +28,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>hifzcards</string>
-				<string>com.hifzcards.app</string>
+				<string>com.yacoobali.hifz</string>
 			</array>
 		</dict>
 	</array>
