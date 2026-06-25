@@ -2,11 +2,11 @@
 import * as Notifications from "expo-notifications";
 import { useEffect, useRef, useState } from "react";
 import { AppState as RNAppState } from "react-native";
+import { buildDeckContext, buildReminderSettings, serializableState, shouldShowTabs } from "../appStateSelectors";
 import { getDeck, isRevisionFlow } from "../deck";
 import {
   cancelComebackReminder,
   maybeRequestNativeReviewEveryOtherDay,
-  ReminderSettings,
   scheduleComebackReminder,
   scheduleHifzNotifications
 } from "../native";
@@ -22,7 +22,7 @@ export function useHifzAppState() {
     AsyncStorage.getItem(STORAGE_KEY)
       .then((value) => {
         if (!value) return;
-        const saved = JSON.parse(value) as Partial<AppState>;
+        const saved = migrateSavedState(JSON.parse(value) as Partial<AppState>);
         setState((current) => ({ ...current, ...saved, screen: saved.screen ?? current.screen }));
       })
       .finally(() => {
@@ -39,37 +39,10 @@ export function useHifzAppState() {
 
   useEffect(() => {
     if (!hydrated) return;
-    const { notificationsScheduled, notificationPermission, ...persistable } = state;
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(persistable)).catch(() => undefined);
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(serializableState(state))).catch(() => undefined);
   }, [hydrated, state]);
 
-  const reminderSettings: ReminderSettings = {
-    sabaqOn: state.sabaqOn,
-    revisionOn: state.revisionOn,
-    sabaqFreq: state.sabaqFreq,
-    revisionFreq: state.revisionFreq,
-    sabaqDays: state.sabaqDays,
-    revisionDays: state.revisionDays,
-    activeStartHour: state.activeStartHour,
-    activeEndHour: state.activeEndHour,
-    activeHoursMode: state.activeHoursMode,
-    splitActiveHours: state.splitActiveHours,
-    weekdayStartHour: state.weekdayStartHour,
-    weekdayEndHour: state.weekdayEndHour,
-    weekendStartHour: state.weekendStartHour,
-    weekendEndHour: state.weekendEndHour,
-    dailyActiveHours: state.dailyActiveHours,
-    hoursOn: state.hoursOn,
-    soundOn: state.soundOn,
-    newRange: state.newRange,
-    revisionRanges: state.revisionRanges,
-    sabaqTargetId: state.sabaqTargetId,
-    revisionTargetId: state.revisionTargetId,
-    revisionProgressIndex: state.revisionProgressIndex,
-    revisionProgressAyah: state.revisionProgressAyah,
-    arabicScript: state.arabicScript,
-    revisionOrder: state.revisionOrder
-  };
+  const reminderSettings = buildReminderSettings(state);
   const settingsRef = useRef(reminderSettings);
   settingsRef.current = reminderSettings;
 
@@ -149,18 +122,18 @@ export function useHifzAppState() {
   const patch = (next: Partial<AppState>) => setState((current) => ({ ...current, ...next }));
   const nav = (screen: Screen) => patch({ screen });
   const beginApp = () => patch({ screen: "home" });
-  const deckContext = { newRange: state.newRange, revisionRanges: state.revisionRanges, history: state.reviewHistory, arabicScript: state.arabicScript, revisionOrder: state.revisionOrder };
+  const deckContext = buildDeckContext(state);
 
-  const startSession = (mode: SessionMode, startIndex?: number) => {
+  const startSession = (mode: SessionMode, startIndex?: number, startAyah?: number) => {
     const deck = getDeck(mode, deckContext);
-    // When the user explicitly picks a sūrah ("I'll choose"), start there from āyah 1; otherwise resume.
+    // When the user explicitly picks a revision section, start from its unfinished ayah; otherwise resume.
     const picked = startIndex !== undefined;
     const revisionIndex = picked
       ? Math.min(Math.max(0, startIndex), Math.max(0, deck.length - 1))
       : Math.min(Math.max(0, state.revisionProgressIndex), Math.max(0, deck.length - 1));
     const revisionItem = deck[revisionIndex];
     const revisionEndAyah = isRevisionFlow(revisionItem) ? revisionItem.passage[revisionItem.passage.length - 1]?.num ?? 1 : 1;
-    const revisionAyah = picked ? 1 : Math.min(revisionEndAyah, Math.max(1, state.revisionProgressAyah || 1));
+    const revisionAyah = picked ? Math.max(1, startAyah ?? 1) : Math.min(revisionEndAyah, Math.max(1, state.revisionProgressAyah || 1));
     patch({
       screen: "session",
       sessionMode: mode,
@@ -170,7 +143,7 @@ export function useHifzAppState() {
       revisionReadAyah: 0,
       revisionResumeAyah: mode === "revision" ? revisionAyah : 0,
       revisionProgressIndex: mode === "revision" ? revisionIndex : state.revisionProgressIndex,
-      revisionProgressAyah: picked ? 1 : state.revisionProgressAyah,
+      revisionProgressAyah: picked ? revisionAyah : state.revisionProgressAyah,
       results: {}
     });
   };
@@ -210,10 +183,16 @@ export function useHifzAppState() {
       reviewHistory: [record, ...(state.reviewHistory ?? [])].slice(0, 80)
     };
     if (isRevisionFlow(item) && status === "finished") {
-      const wrapped = state.cardIndex >= deck.length - 1;
-      next.revisionProgressIndex = wrapped ? 0 : state.cardIndex + 1;
+      const completedSurahs = { ...(state.revisionCompletedSurahs ?? {}), [String(item.surah ?? state.cardIndex)]: true };
+      const allDone = deck.every((entry, index) => {
+        if (!isRevisionFlow(entry)) return true;
+        return completedSurahs[String(entry.surah ?? index)];
+      });
+      const nextRemainingIndex = deck.findIndex((entry, index) => isRevisionFlow(entry) && !completedSurahs[String(entry.surah ?? index)]);
+      next.revisionCompletedSurahs = allDone ? {} : completedSurahs;
+      next.revisionProgressIndex = allDone ? 0 : Math.max(0, nextRemainingIndex);
       next.revisionProgressAyah = 1;
-      if (wrapped) next.revisionRounds = (state.revisionRounds ?? 0) + 1;
+      if (allDone) next.revisionRounds = (state.revisionRounds ?? 0) + 1;
       const flowEnd = item.passage[item.passage.length - 1]?.num ?? item.start;
       const resume = Math.max(item.start, state.revisionResumeAyah || item.start);
       Object.assign(next, dailyRevisionFields(state, flowEnd - resume + 1));
@@ -258,7 +237,7 @@ export function useHifzAppState() {
     patch({ revisionReadAyah: 0, revealed: true });
   };
 
-  const showTabs = ["home", "progress", "board", "profile"].includes(state.screen);
+  const showTabs = shouldShowTabs(state.screen);
 
   return {
     state,
@@ -286,13 +265,7 @@ function routeNotificationToState(current: AppState, data: Record<string, unknow
   const mode = parseNotificationMode(data.mode, data.screen);
   if (!mode) return current;
 
-  const deckContext = {
-    newRange: current.newRange,
-    revisionRanges: current.revisionRanges,
-    history: current.reviewHistory,
-    arabicScript: current.arabicScript,
-    revisionOrder: current.revisionOrder
-  };
+  const deckContext = buildDeckContext(current);
   const deck = getDeck(mode, deckContext);
   const surah = Number(data.surah) || 0;
   const ayah = Number(data.ayah) || 1;
@@ -347,4 +320,21 @@ function parseNotificationMode(mode: unknown, screen: unknown): SessionMode | nu
 
 function surahNumberOf(label: string) {
   return Number(label.split("·")[0]?.trim()) || 0;
+}
+
+function migrateSavedState(saved: Partial<AppState>): Partial<AppState> {
+  const oldDefaultRange =
+    saved.revisionRanges?.length === 1 &&
+    saved.revisionRanges[0].id === "rev-default" &&
+    saved.revisionRanges[0].fromSurah === 1 &&
+    saved.revisionRanges[0].toSurah === 114;
+  if (!oldDefaultRange) return saved;
+  return {
+    ...saved,
+    revisionLoad: saved.revisionLoad === 30 ? 5 : saved.revisionLoad,
+    revisionRanges: [{ id: "rev-default", fromSurah: 1, toSurah: 1, label: "1 · Al-Fatihah" }],
+    revisionProgressIndex: 0,
+    revisionProgressAyah: 1,
+    revisionCompletedSurahs: {}
+  };
 }

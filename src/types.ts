@@ -58,6 +58,7 @@ export type AppState = {
   perDay: number;
   knownUpTo: number;
   revisionLoad: number;
+  revisionRoundDays: number;
   freq: string;
   newRange: MemorisationRange;
   revisionRanges: SurahRange[];
@@ -88,6 +89,7 @@ export type AppState = {
   revisionResumeAyah: number;
   revisionProgressIndex: number;
   revisionProgressAyah: number;
+  revisionCompletedSurahs: Record<string, boolean>;
   revisionRounds: number;
   revisionOrder: RevisionOrder;
   revisionDoneToday: number;
@@ -116,7 +118,8 @@ export const initialState: AppState = {
   ayahTo: 30,
   perDay: 3,
   knownUpTo: 11,
-  revisionLoad: 30,
+  revisionLoad: 5,
+  revisionRoundDays: 7,
   freq: "30 min",
   newRange: {
     id: "new-67",
@@ -130,8 +133,8 @@ export const initialState: AppState = {
     {
       id: "rev-default",
       fromSurah: 1,
-      toSurah: 114,
-      label: "Al-Fatihah → An-Nas"
+      toSurah: 1,
+      label: "1 · Al-Fatihah"
     }
   ],
   activeStartHour: 6,
@@ -169,6 +172,7 @@ export const initialState: AppState = {
   revisionResumeAyah: 0,
   revisionProgressIndex: 0,
   revisionProgressAyah: 1,
+  revisionCompletedSurahs: {},
   revisionRounds: 0,
   revisionOrder: "forward",
   revisionDoneToday: 0,
