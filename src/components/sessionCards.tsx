@@ -73,7 +73,9 @@ export function RevisionCard({
   const [showHelp, setShowHelp] = useState(false);
   const passage = item.passage.filter((ayah) => ayah.num >= startAt);
   const availableJuz = Array.from(new Set(passage.map((ayah) => juzForLocation(item.surah ?? 1, ayah.num))));
-  const visiblePassage = showFromJuz ? passage.filter((ayah) => juzForLocation(item.surah ?? 1, ayah.num) >= showFromJuz) : passage;
+  const visiblePassage = showFromJuz
+    ? item.passage.filter((ayah) => juzForLocation(item.surah ?? 1, ayah.num) >= showFromJuz)
+    : passage;
   const firstAyah = visiblePassage[0] ?? passage[0] ?? item.passage[0];
   const currentJuz = juzForLocation(item.surah ?? 1, startAt);
   return (

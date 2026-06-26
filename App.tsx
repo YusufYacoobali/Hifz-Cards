@@ -16,8 +16,8 @@ import {
 } from "react-native";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { buildDeckContext } from "./src/appStateSelectors";
-import { ayahCard, ayahCellStyle, buildNewDeck, buildRevisionDeck, getDeck, isRevisionFlow, sessionProgressWidth } from "./src/deck";
-import { HifzCard, weakDeck } from "./src/data";
+import { ayahCard, ayahCellStyle, buildNewDeck, buildRevisionDeck, buildWeakDeck, getDeck, isRevisionFlow, sessionProgressWidth } from "./src/deck";
+import { HifzCard } from "./src/data";
 import {
   getDashboardStats,
   getProgressStats,
@@ -74,7 +74,7 @@ function AppContent() {
           )}
           {state.screen === "home" && <HomeScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onNav={nav} onModes={() => nav("modes")} />}
           {state.screen === "notif" && <NotificationsScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onPatch={patch} onNav={nav} />}
-          {state.screen === "modes" && <ModeScreen state={state} safeTop={safe.top} onNav={nav} onStart={startSession} />}
+          {state.screen === "modes" && <ModeScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onNav={nav} onStart={startSession} />}
           {state.screen === "session" && (
             <SessionScreen
               state={state}
@@ -192,10 +192,11 @@ function HomeScreen({
   );
 }
 
-function ModeScreen({ state, safeTop, onNav, onStart }: { state: AppState; safeTop: number; onNav: (screen: Screen) => void; onStart: (mode: SessionMode, startIndex?: number, startAyah?: number) => void }) {
+function ModeScreen({ state, safeTop, safeBottom, onNav, onStart }: { state: AppState; safeTop: number; safeBottom: number; onNav: (screen: Screen) => void; onStart: (mode: SessionMode, startIndex?: number, startAyah?: number) => void }) {
   const [revisionDetailOpen, setRevisionDetailOpen] = useState(false);
   const newCount = buildNewDeck(state.newRange, state.arabicScript).length;
   const revisionDeck = buildRevisionDeck(state.revisionRanges, state.arabicScript, state.revisionOrder);
+  const weakCount = buildWeakDeck(state.reviewHistory, state.arabicScript).length;
   const revisionCount = revisionDeck.length;
   const revision = revisionTotals(state);
   const roundItems = revisionRoundItems(state);
@@ -206,17 +207,24 @@ function ModeScreen({ state, safeTop, onNav, onStart }: { state: AppState; safeT
   const continueAyah = remainingItems[0]?.startAyah ?? state.revisionProgressAyah ?? 1;
 
   const startRevision = (index = continueIndex, ayah = continueAyah) => onStart("revision", index, ayah);
+  const startWeak = () => {
+    if (!weakCount) {
+      Alert.alert("No weak cards yet", "Mark an ayah as shaky, forgotten, or stuck during a session and it will appear here.");
+      return;
+    }
+    onStart("weak");
+  };
 
   if (revisionDetailOpen) {
     return (
-      <ScrollView style={styles.fullScreen} contentContainerStyle={[styles.settingsContent, { paddingTop: safeTop + 8 }]} showsVerticalScrollIndicator={false}>
-        <Header title={pickMode ? "Pick revision" : "Revision round"} onBack={() => setRevisionDetailOpen(false)} />
+      <ScrollView style={styles.fullScreen} contentContainerStyle={[styles.settingsContent, { paddingTop: safeTop + 8, paddingBottom: Math.max(110, safeBottom + 96) }]} showsVerticalScrollIndicator={false}>
+        <Header title={pickMode ? "Pick revision" : "Revision khatm"} onBack={() => setRevisionDetailOpen(false)} />
         <Panel>
           <View style={styles.rowBetween}>
             <View style={styles.flex}>
-              <Overline>Current round</Overline>
+              <Overline>Current khatm</Overline>
               <Text style={styles.cardTitle}>{revision.done} of {revision.total} ayat complete</Text>
-              <Text style={styles.cardSubtitle}>Round {revision.rounds + 1} - {revision.remaining} ayat left - target {revision.dailyTarget}/day</Text>
+              <Text style={styles.cardSubtitle}>Khatm {revision.rounds + 1} - {revision.remaining} ayat left - target {revision.dailyTarget}/day</Text>
             </View>
             <View style={styles.todayRing}>
               <Text style={styles.todayRingValue}>{revision.pct}%</Text>
@@ -230,7 +238,7 @@ function ModeScreen({ state, safeTop, onNav, onStart }: { state: AppState; safeT
 
         <Panel>
           <View style={styles.rowBetween}>
-            <Text style={styles.sectionTitle}>Round record</Text>
+            <Text style={styles.sectionTitle}>Khatm record</Text>
             <Text style={styles.greenStrong}>{remainingItems.length} left</Text>
           </View>
           <ScrollView style={{ maxHeight: 360 }} nestedScrollEnabled showsVerticalScrollIndicator>
@@ -244,7 +252,7 @@ function ModeScreen({ state, safeTop, onNav, onStart }: { state: AppState; safeT
                   <View style={styles.flex}>
                     <Text style={styles.cardTitle}>{entry.flow.label}</Text>
                     <Text style={styles.cardSubtitle}>
-                      {completed ? "Completed this round" : current ? `Current - continue from ayah ${entry.startAyah}` : `Not started - ${entry.totalAyahs} ayat`}
+                      {completed ? "Completed this khatm" : current ? `Current - continue from ayah ${entry.startAyah}` : `Not started - ${entry.totalAyahs} ayat`}
                     </Text>
                     <View style={styles.track}>
                       <View style={[styles.fill, { width: `${pct}%`, backgroundColor: completed ? colors.mint : colors.goldDark }]} />
@@ -271,7 +279,7 @@ function ModeScreen({ state, safeTop, onNav, onStart }: { state: AppState; safeT
                   <Ionicons name="chevron-forward" size={18} color={colors.faint} />
                 </Pressable>
               ))}
-              {remainingItems.length === 0 && <Text style={styles.cardSubtitle}>Round complete. Start any revision session to begin the next round.</Text>}
+              {remainingItems.length === 0 && <Text style={styles.cardSubtitle}>Khatm complete. Start any revision session to begin the next khatm.</Text>}
             </View>
           </Panel>
         ) : (
@@ -282,7 +290,7 @@ function ModeScreen({ state, safeTop, onNav, onStart }: { state: AppState; safeT
   }
 
   return (
-    <ScrollView style={styles.fullScreen} contentContainerStyle={[styles.settingsContent, { paddingTop: safeTop + 8 }]} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.fullScreen} contentContainerStyle={[styles.settingsContent, { paddingTop: safeTop + 8, paddingBottom: Math.max(110, safeBottom + 96) }]} showsVerticalScrollIndicator={false}>
       <Header title="Choose your session" onBack={() => onNav("home")} />
       <Overline>Three ways to drill</Overline>
       <ModeCard
@@ -302,11 +310,11 @@ function ModeScreen({ state, safeTop, onNav, onStart }: { state: AppState; safeT
       <Panel>
         <View style={styles.rowBetween}>
           <View style={styles.flex}>
-            <Overline>Revision round</Overline>
+            <Overline>Revision khatm</Overline>
             <Text style={styles.cardTitle}>{revision.pct}% complete</Text>
             <Text style={styles.cardSubtitle}>{revision.done}/{revision.total} ayat - {revision.remaining} left</Text>
           </View>
-          <Text style={styles.greenStrong}>Round {revision.rounds + 1}</Text>
+          <Text style={styles.greenStrong}>Khatm {revision.rounds + 1}</Text>
         </View>
         <View style={styles.track}>
           <View style={[styles.fill, { width: `${revision.pct}%`, backgroundColor: colors.mint }]} />
@@ -315,10 +323,10 @@ function ModeScreen({ state, safeTop, onNav, onStart }: { state: AppState; safeT
       <ModeCard
         icon="warning-outline"
         title="Weak Spot Cards"
-        subtitle={`Repeat the ${weakDeck.length} ayat you slipped on`}
-        quote="Drill the shaky ones until they settle."
+        subtitle={weakCount ? `Repeat the ${weakCount} ayat you slipped on` : "Marked slips will appear here"}
+        quote={weakCount ? "Drill the shaky ones until they settle." : "Start with revision or new cards to build this deck."}
         warn
-        onPress={() => onStart("weak")}
+        onPress={startWeak}
       />
     </ScrollView>
   );
@@ -553,17 +561,17 @@ function SessionScreen({
       ) : reading ? (
         <View style={[styles.markRow, { bottom: safeBottom + (Platform.OS === "android" ? 20 : 28) }]}>
           <PrimaryButton
-            label={readAlreadyWeak ? "In weak ✓" : "Add to weak"}
-            icon={readAlreadyWeak ? "checkmark" : "bookmark-outline"}
+            label={readAlreadyWeak ? "In weak" : "Add to weak"}
+            icon={readAlreadyWeak ? undefined : "bookmark-outline"}
             onPress={() => onAddWeak(currentSurahNumber, state.revisionReadAyah, isRevisionFlow(item) ? item.label : "")}
-            style={readAlreadyWeak ? styles.weakActionDone : styles.weakActionButton}
+            style={[readAlreadyWeak ? styles.weakActionDone : styles.weakActionButton, styles.readWeakButton]}
             textColor={colors.green}
           />
           <PrimaryButton
             label={`Continue from āyah ${state.revisionReadAyah}`}
             icon="return-down-forward"
             onPress={onResumeRevision}
-            style={styles.flex}
+            style={styles.readContinueButton}
           />
         </View>
       ) : !state.revealed ? (
@@ -584,6 +592,7 @@ function ProgressScreen({ state, safeTop, onNav, onStart }: { state: AppState; s
   const dashboard = getDashboardStats(state);
   const revision = revisionTotals(state);
   const roundItems = revisionRoundItems(state);
+  const todayWeekIndex = (new Date().getDay() + 6) % 7;
 
   return (
     <ScrollView style={styles.fullScreen} contentContainerStyle={styles.withTabsScroll} showsVerticalScrollIndicator={false}>
@@ -592,23 +601,23 @@ function ProgressScreen({ state, safeTop, onNav, onStart }: { state: AppState; s
         <Text style={styles.screenSub}>Memorising {state.newRange.surah}</Text>
         <Panel style={styles.rowBetween}>
           <View style={styles.flex}>
-            <Overline>Revision rounds</Overline>
-            <Text style={styles.cardTitle}>{revision.rounds} complete {revision.rounds === 1 ? "round" : "rounds"}</Text>
-            <Text style={styles.cardSubtitle}>{revision.remaining} of {revision.total} āyāt left this round</Text>
+            <Overline>Revision khatms</Overline>
+            <Text style={styles.cardTitle}>{revision.rounds} complete {revision.rounds === 1 ? "khatm" : "khatms"}</Text>
+            <Text style={styles.cardSubtitle}>{revision.remaining} of {revision.total} āyāt left this khatm</Text>
           </View>
           <View style={styles.todayRing}>
             <Text style={styles.todayRingValue}>{revision.rounds}</Text>
-            <Text style={styles.todayRingLabel}>rounds</Text>
+            <Text style={styles.todayRingLabel}>khatms</Text>
           </View>
         </Panel>
         <Panel>
           <ProgressLine label="Memorisation" value={`${dashboard.memorisedPercent}%`} pct={dashboard.memorisedPercent} color={colors.mint} />
-          <ProgressLine label="Revision round" value={`${revision.pct}%`} pct={revision.pct} color={colors.goldDark} />
-          <Text style={styles.cardSubtitle}>Daily revision target: {revision.dailyTarget} ayat · {revision.remainingToday} left today</Text>
+          <ProgressLine label="Revision khatm" value={`${revision.pct}%`} pct={revision.pct} color={colors.goldDark} />
+          <Text style={styles.cardSubtitle}>Khatm pace: {revision.dailyTarget} ayat/day · {revision.remainingToday} left today</Text>
         </Panel>
         <Panel>
           <View style={styles.rowBetween}>
-            <Text style={styles.sectionTitle}>Current round record</Text>
+            <Text style={styles.sectionTitle}>Current khatm record</Text>
             <Text style={styles.greenStrong}>{revision.remaining} left</Text>
           </View>
           <ScrollView style={{ maxHeight: 300 }} nestedScrollEnabled showsVerticalScrollIndicator>
@@ -642,11 +651,11 @@ function ProgressScreen({ state, safeTop, onNav, onStart }: { state: AppState; s
             <Text style={styles.cardSubtitle}>tap any to drill</Text>
           </View>
           <View style={styles.ayahMap}>
-            {progress.ayahMap.map(({ label, status }) => (
+            {progress.ayahMap.length ? progress.ayahMap.map(({ label, status }) => (
               <Pressable key={label} style={[styles.ayahCell, ayahCellStyle(status)]} onPress={() => onStart(status === "solid" ? "revision" : "weak")}>
                 <Text style={[styles.ayahCellText, status === "empty" && { color: colors.faint }]}>{label}</Text>
               </Pressable>
-            ))}
+            )) : <Text style={styles.cardSubtitle}>No card marks yet. Results will appear here after your first session.</Text>}
           </View>
           <Legend />
         </Panel>
@@ -671,21 +680,22 @@ function ProgressScreen({ state, safeTop, onNav, onStart }: { state: AppState; s
                 </View>
               </Pressable>
             ))}
+            {progress.weakSpots.length === 0 && <Text style={styles.cardSubtitle}>No weak spots marked yet.</Text>}
           </View>
         </Panel>
         <Panel>
           <View style={styles.rowBetween}>
-            <Text style={styles.sectionTitle}>Streak · June</Text>
-            <Text style={styles.greenStrong}>14 days</Text>
+            <Text style={styles.sectionTitle}>Weekly consistency</Text>
+            <Text style={styles.greenStrong}>{dashboard.weeklyCompletedDays} / 7 days</Text>
           </View>
           <View style={styles.calendarGrid}>
-            {Array.from({ length: 21 }).map((_, index) => (
+            {dashboard.weeklyDays.map((done, index) => (
               <View
                 key={index}
                 style={[
                   styles.calendarDay,
-                  { backgroundColor: [0, 8, 20].includes(index) ? colors.line : index % 4 === 1 ? "#cfe6dd" : colors.mint },
-                  index === 19 && styles.todayOutline
+                  { backgroundColor: done ? colors.mint : colors.line },
+                  index === todayWeekIndex && styles.todayOutline
                 ]}
               />
             ))}
@@ -753,6 +763,9 @@ function BoardScreen({ state, safeTop, onPatch }: { state: AppState; safeTop: nu
 function RecapScreen({ state, safeTop, onNav }: { state: AppState; safeTop: number; onNav: (screen: Screen) => void }) {
   const recap = getWeeklyRecap(state.reviewHistory);
   const cardRef = useRef<View>(null);
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+  const weekLabel = `Week of ${weekStart.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
   const shareText = `Hifz Cards weekly recap: ${recap.cardsTested} cards reviewed, ${recap.ayahsRevised} āyāt revised, ${recap.newMemorised} new memorised, ${recap.effortPoints} effort points.`;
   const shareRecap = async () => {
     try {
@@ -776,7 +789,7 @@ function RecapScreen({ state, safeTop, onNav }: { state: AppState; safeTop: numb
       </View>
       <Panel ref={cardRef} style={styles.shareCard}>
         <View style={styles.rowBetween}>
-          <Overline>Week of 15 June</Overline>
+          <Overline>{weekLabel}</Overline>
           <View style={styles.miniLogo}>
             <Text style={styles.miniLogoText}>ﷺ</Text>
           </View>
@@ -848,11 +861,11 @@ function ProfileScreen({
       <LinearGradient colors={[colors.green2, "#0c3128"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.profileHero, { paddingTop: safeTop + 18 }]}>
         <View style={styles.profileRow}>
           <View style={styles.profileAvatar}>
-            <Text style={styles.profileInitial}>Y</Text>
+            <Text style={styles.profileInitial}>H</Text>
           </View>
           <View>
-            <Text style={styles.profileName}>Yusuf Rahman</Text>
-            <Text style={styles.profileSub}>{communityLabel} · memorising since Muharram 1447</Text>
+            <Text style={styles.profileName}>Your Hifz profile</Text>
+            <Text style={styles.profileSub}>{communityLabel} · local progress on this device</Text>
           </View>
         </View>
         <View style={styles.profileStats}>
@@ -923,21 +936,22 @@ function ProfileScreen({
           )}
         </Panel>
         <Panel style={styles.listPanel}>
-          <SettingsRow icon="notifications-outline" label="Reminder preferences" onPress={() => onNav("notif")} />
+          <SettingsRow icon="notifications-outline" label="Reminder preferences" meta={`${state.notificationsScheduled} scheduled`} onPress={() => onNav("notif")} />
           <Divider />
-          <SettingsRow icon="people-outline" label="Friends & classes" meta="4 friends" onPress={() => onNav("board")} />
+          <SettingsRow icon="repeat-outline" label="Revision plan" meta={`${state.revisionRoundDays} day khatm`} onPress={() => onNav("notif")} />
           <Divider />
-          <SettingsRow icon="radio-button-on-outline" label="Memorisation focus" onPress={() => onPatch({ screen: "onboarding", onbStep: 2 })} />
+          <SettingsRow icon="people-outline" label="Friends & classes" meta={communityLabel} onPress={() => onNav("board")} />
           <Divider />
-          <SettingsRow icon="refresh-outline" label="Restart onboarding" meta="setup" onPress={restartOnboarding} />
-          <Divider />
-          <SettingsRow icon="trash-outline" label="Clear review journal" meta={`${history.length} marks`} onPress={clearHistory} />
+          <SettingsRow icon="refresh-outline" label="Restart onboarding" meta="review setup" onPress={restartOnboarding} />
+        </Panel>
+        <Panel style={styles.listPanel}>
+          <SettingsRow icon="trash-outline" label="Clear review journal" meta={`${history.length} marks saved`} onPress={clearHistory} />
         </Panel>
         <Panel style={styles.premium}>
           <Text style={styles.premiumMark}>ﷺ</Text>
           <Text style={styles.premiumChip}>REVISION PLAN</Text>
           <Text style={styles.premiumTitle}>Tune your reminders</Text>
-          <Text style={styles.premiumBody}>Adjust active hours, sabaq frequency, revision days, and weak-ayah prioritisation from one calm control surface.</Text>
+          <Text style={styles.premiumBody}>Adjust active hours, new memorisation nudges, revision days, and your khatm completion goal from one calm control surface.</Text>
           <PrimaryButton label="Open reminder plan" onPress={() => onNav("notif")} style={{ backgroundColor: colors.gold }} textColor={colors.green} />
         </Panel>
       </View>

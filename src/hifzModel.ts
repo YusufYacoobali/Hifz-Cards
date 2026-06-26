@@ -1,4 +1,5 @@
-﻿import { cards, leaderboard, newDeck, weakDeck } from "./data";
+import { leaderboard } from "./data";
+import { ayahCard } from "./deck";
 import { allSurahs } from "./surahs";
 import { AppState, ReviewRecord } from "./types";
 
@@ -68,36 +69,6 @@ export type LeaderboardEntry = {
   color: string;
 };
 
-export const ayahCards: AyahCardModel[] = cards.map((card) => ({
-  id: `67:${card.num}`,
-  surah: "Al-Mulk",
-  ayahNumber: card.num,
-  text: card.full,
-  prompt: card.prompt,
-  translation: card.tr
-}));
-
-export const reviewAttempts: ReviewAttempt[] = [
-  { ayahId: "67:12", mode: "revision", result: "solid", timestamp: "2026-06-15T08:10:00.000Z", mistakeType: "none" },
-  { ayahId: "67:13", mode: "revision", result: "solid", timestamp: "2026-06-15T08:14:00.000Z", mistakeType: "none" },
-  { ayahId: "67:14", mode: "weak", result: "shaky", timestamp: "2026-06-16T13:35:00.000Z", mistakeType: "hesitation" },
-  { ayahId: "67:16", mode: "weak", result: "shaky", timestamp: "2026-06-17T17:20:00.000Z", mistakeType: "wording" },
-  { ayahId: "67:17", mode: "weak", result: "forgot", timestamp: "2026-06-18T11:05:00.000Z", mistakeType: "sequence" },
-  { ayahId: "67:19", mode: "weak", result: "forgot", timestamp: "2026-06-19T18:45:00.000Z", mistakeType: "ending" },
-  { ayahId: "67:20", mode: "new", result: "shaky", timestamp: "2026-06-20T07:30:00.000Z", mistakeType: "hesitation" },
-  { ayahId: "67:21", mode: "new", result: "shaky", timestamp: "2026-06-20T12:20:00.000Z", mistakeType: "wording" },
-  { ayahId: "67:22", mode: "new", result: "solid", timestamp: "2026-06-21T09:00:00.000Z", mistakeType: "none" }
-];
-
-export const weakSpots: WeakSpot[] = [
-  { ayahId: "67:17", weaknessScore: 92, lastReviewedAt: "2026-06-18T11:05:00.000Z", nextDueAt: "2026-06-21T16:00:00.000Z" },
-  { ayahId: "67:19", weaknessScore: 86, lastReviewedAt: "2026-06-19T18:45:00.000Z", nextDueAt: "2026-06-21T18:00:00.000Z" },
-  { ayahId: "67:14", weaknessScore: 68, lastReviewedAt: "2026-06-16T13:35:00.000Z", nextDueAt: "2026-06-22T08:00:00.000Z" },
-  { ayahId: "67:16", weaknessScore: 61, lastReviewedAt: "2026-06-17T17:20:00.000Z", nextDueAt: "2026-06-22T10:00:00.000Z" },
-  { ayahId: "67:20", weaknessScore: 54, lastReviewedAt: "2026-06-20T07:30:00.000Z", nextDueAt: "2026-06-22T12:00:00.000Z" },
-  { ayahId: "67:21", weaknessScore: 49, lastReviewedAt: "2026-06-20T12:20:00.000Z", nextDueAt: "2026-06-22T14:00:00.000Z" }
-];
-
 export const leaderboardEntries: LeaderboardEntry[] = leaderboard.map((entry, index) => ({
   userId: entry.name.toLowerCase(),
   name: entry.name,
@@ -114,18 +85,9 @@ export function ayahLabel(ayahId: string) {
   return `Al-Mulk ${ayah}`;
 }
 
-export function getWeakSpotCards() {
-  return weakSpots
-    .map((weakSpot) => {
-      const card = ayahCards.find((ayah) => ayah.id === weakSpot.ayahId);
-      return card ? { ...weakSpot, card } : null;
-    })
-    .filter(Boolean) as Array<WeakSpot & { card: AyahCardModel }>;
-}
-
-function getAllAttempts(history: LiveReviewEntry[] = []) {
+function getAllAttempts(history: ReviewRecord[] = []) {
   const liveAttempts: ReviewAttempt[] = history.map((entry) => ({
-    ayahId: `67:${extractAyahNumber(entry.ayahLabel)}`,
+    ayahId: `${entry.surah ?? 67}:${entry.ayah ?? extractAyahNumber(entry.ayahLabel)}`,
     mode: entry.mode,
     result: normalizeResult(entry.result),
     timestamp: entry.timestamp,
@@ -133,7 +95,7 @@ function getAllAttempts(history: LiveReviewEntry[] = []) {
     gotStuckAtAyah: entry.result.startsWith("stuck@") ? Number(entry.result.replace("stuck@", "")) : undefined
   }));
 
-  return [...liveAttempts, ...reviewAttempts];
+  return liveAttempts;
 }
 
 function extractAyahNumber(label: string) {
@@ -315,14 +277,59 @@ export function getDashboardStats(state: AppState) {
   };
 }
 
-export function getProgressStats(history: LiveReviewEntry[] = []) {
+function getWeakSpotCardsFromHistory(history: ReviewRecord[]) {
+  const latestByAyah = new Map<string, ReviewRecord>();
+  const weakCounts = new Map<string, number>();
+  history.forEach((record) => {
+    if (!record.surah || !record.ayah) return;
+    const key = `${record.surah}:${record.ayah}`;
+    if (!latestByAyah.has(key)) latestByAyah.set(key, record);
+    if (record.result === "shaky" || record.result === "forgot" || String(record.result).startsWith("stuck@")) {
+      weakCounts.set(key, (weakCounts.get(key) ?? 0) + 1);
+    }
+  });
+  return Array.from(latestByAyah.entries())
+    .filter(([, record]) => record.result === "shaky" || record.result === "forgot" || String(record.result).startsWith("stuck@"))
+    .map(([ayahId, record]) => {
+      const built = ayahCard(record.surah ?? 67, record.ayah ?? 1);
+      return {
+        ayahId,
+        weaknessScore: Math.min(99, 45 + (weakCounts.get(ayahId) ?? 1) * 15),
+        lastReviewedAt: record.timestamp,
+        nextDueAt: new Date(new Date(record.timestamp).getTime() + 24 * 60 * 60 * 1000).toISOString(),
+        card: {
+          id: ayahId,
+          surah: built.surah ?? `Surah ${record.surah}`,
+          ayahNumber: built.num,
+          text: built.full,
+          prompt: built.prompt,
+          translation: built.tr
+        }
+      };
+    })
+    .sort((a, b) => b.weaknessScore - a.weaknessScore);
+}
+export function getProgressStats(history: ReviewRecord[] = []) {
   const attempts = getAllAttempts(history);
-  const easy = attempts.filter((attempt) => attempt.result === "solid" || attempt.result === "finished").length + 31;
-  const weak = attempts.filter((attempt) => attempt.result === "shaky").length + 7;
-  const failed = attempts.filter((attempt) => attempt.result === "forgot").length + 2;
+  const easy = attempts.filter((attempt) => attempt.result === "solid" || attempt.result === "finished").length;
+  const weak = attempts.filter((attempt) => attempt.result === "shaky" || Boolean(attempt.gotStuckAtAyah)).length;
+  const failed = attempts.filter((attempt) => attempt.result === "forgot" && !attempt.gotStuckAtAyah).length;
   const total = easy + weak + failed;
-  const memorisedPercent = Math.min(100, Math.round((easy / total) * 100));
-  const revisionPercent = Math.min(100, Math.round(((easy + weak * 0.45) / total) * 100));
+  const memorisedPercent = total ? Math.min(100, Math.round((easy / total) * 100)) : 0;
+  const revisionPercent = total ? Math.min(100, Math.round(((easy + weak * 0.45) / total) * 100)) : 0;
+  const latestByAyah = new Map<string, ReviewAttempt>();
+  attempts.forEach((attempt) => latestByAyah.set(attempt.ayahId, attempt));
+  const ayahMap = Array.from(latestByAyah.values())
+    .sort((a, b) => {
+      const [aSurah, aAyah] = a.ayahId.split(":").map(Number);
+      const [bSurah, bAyah] = b.ayahId.split(":").map(Number);
+      return aSurah - bSurah || aAyah - bAyah;
+    })
+    .slice(-36)
+    .map((attempt) => ({
+      label: attempt.ayahId,
+      status: attempt.result === "solid" || attempt.result === "finished" ? "solid" : attempt.result === "forgot" ? "failed" : "weak"
+    }));
 
   return {
     memorisedPercent,
@@ -330,43 +337,36 @@ export function getProgressStats(history: LiveReviewEntry[] = []) {
     easy,
     weak,
     failed,
-    weakSpots: getWeakSpotCards(),
-    ayahMap: [
-      { label: "12", status: "solid" },
-      { label: "13", status: "solid" },
-      { label: "14", status: "weak" },
-      { label: "15", status: "solid" },
-      { label: "16", status: "weak" },
-      { label: "17", status: "failed" },
-      { label: "18", status: "solid" },
-      { label: "19", status: "failed" },
-      { label: "20", status: "weak" },
-      { label: "21", status: "weak" },
-      { label: "22", status: "solid" },
-      { label: "+", status: "empty" }
-    ]
+    weakSpots: getWeakSpotCardsFromHistory(history),
+    ayahMap
   };
 }
 
-export function getWeeklyRecap(history: LiveReviewEntry[] = []) {
-  const attempts = getAllAttempts(history);
-  const liveCount = history.length;
-  const weakImproved = attempts.filter((attempt) => attempt.result === "solid" && weakSpots.some((spot) => spot.ayahId === attempt.ayahId)).length;
+export function getWeeklyRecap(history: ReviewRecord[] = []) {
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const weekHistory = history.filter((entry) => new Date(entry.timestamp).getTime() >= weekAgo);
+  const attempts = getAllAttempts(weekHistory);
+  const weakByAyah = new Set<string>();
+  let weakImproved = 0;
+  history.slice().reverse().forEach((entry) => {
+    const ayahId = `${entry.surah ?? 67}:${entry.ayah ?? extractAyahNumber(entry.ayahLabel)}`;
+    if (entry.result === "shaky" || entry.result === "forgot" || String(entry.result).startsWith("stuck@")) weakByAyah.add(ayahId);
+    if ((entry.result === "solid" || entry.result === "finished") && weakByAyah.has(ayahId)) {
+      weakImproved += 1;
+      weakByAyah.delete(ayahId);
+    }
+  });
+  const weakest = attempts.find((attempt) => attempt.result === "forgot" || attempt.result === "shaky" || attempt.gotStuckAtAyah);
+  const strongest = attempts.find((attempt) => attempt.result === "solid" || attempt.result === "finished");
 
   return {
-    cardsTested: 84 + liveCount,
-    ayahsRevised: 320 + history.filter((entry) => entry.mode !== "new").length,
-    newMemorised: newDeck.length,
-    effortPoints: 91 + liveCount * 2,
-    strongestRange: "Āyāt 12-15",
-    weakestRange: "Āyāt 17 & 19",
-    improved: `${12 + weakImproved} weak cards turned solid`,
-    streakMaintained: true
+    cardsTested: weekHistory.length,
+    ayahsRevised: weekHistory.filter((entry) => entry.mode !== "new").length,
+    newMemorised: weekHistory.filter((entry) => entry.mode === "new" && (entry.result === "solid" || entry.result === "finished")).length,
+    effortPoints: attempts.reduce((sum, attempt) => sum + (attempt.result === "solid" || attempt.result === "finished" ? 3 : 1), 0),
+    strongestRange: strongest ? strongest.ayahId : "No solid marks yet",
+    weakestRange: weakest ? weakest.ayahId : "No weak marks yet",
+    improved: `${weakImproved} weak cards turned solid`,
+    streakMaintained: weekHistory.length > 0 && new Set(weekHistory.map((entry) => dayStart(entry.timestamp))).size >= 7
   };
-}
-
-export function getNextRevisionStart() {
-  const dueWeak = getWeakSpotCards()[0];
-  if (dueWeak) return dueWeak.card.ayahNumber;
-  return weakDeck[0]?.num ?? 12;
 }

@@ -1,5 +1,5 @@
 import { DimensionValue } from "react-native";
-import { HifzCard, revisionFlows, RevisionFlow, newDeck, weakDeck } from "./data";
+import { HifzCard, revisionFlows, RevisionFlow, newDeck } from "./data";
 import { ayahText, ayahTranslation, firstWords, surahVerses } from "./quran";
 import { allSurahs } from "./surahs";
 import { colors } from "./theme";
@@ -113,7 +113,7 @@ export function buildRevisionDeck(
 export function getDeck(mode: SessionMode, ctx?: DeckContext): PracticeItem[] {
   if (mode === "weak") {
     const built = buildWeakDeck(ctx?.history, ctx?.arabicScript);
-    return built.length ? built : weakDeck;
+    return built;
   }
   if (mode === "revision") {
     if (!ctx) return revisionFlows;

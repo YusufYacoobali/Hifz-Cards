@@ -92,7 +92,6 @@ export const olderPassage = [
 ];
 
 export const newDeck = cards.filter((card) => [20, 21, 22].includes(card.num));
-export const weakDeck = cards.filter((card) => [14, 16, 17, 19, 20, 21].includes(card.num));
 
 export const revisionFlows: RevisionFlow[] = [
   {

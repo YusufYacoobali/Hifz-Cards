@@ -1348,6 +1348,14 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 16,
     flexGrow: 0
   },
+  readWeakButton: {
+    flex: 0.8,
+    minWidth: 108
+  },
+  readContinueButton: {
+    flex: 1.35,
+    paddingHorizontal: Platform.OS === "android" ? 10 : 14
+  },
   markButton: {
     flex: 1,
     minWidth: 0,

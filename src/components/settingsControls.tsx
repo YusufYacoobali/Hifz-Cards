@@ -64,6 +64,7 @@ export function DailyTargetCard({
   min,
   max,
   step,
+  options,
   onChange
 }: {
   icon: string;
@@ -74,9 +75,17 @@ export function DailyTargetCard({
   min: number;
   max: number;
   step: number;
+  options?: number[];
   onChange: (value: number) => void;
 }) {
-  const quickValues = targetQuickValues(min, max);
+  const quickValues = options ?? targetQuickValues(min, max);
+  const orderedOptions = options ? [...options].sort((a, b) => a - b) : [];
+  const decrementValue = options
+    ? orderedOptions.filter((option) => option < value).pop() ?? value
+    : Math.max(min, value - step);
+  const incrementValue = options
+    ? orderedOptions.find((option) => option > value) ?? value
+    : Math.min(max, value + step);
   return (
     <Panel style={styles.dailyTargetCard}>
       <View style={styles.settingRowInner}>
@@ -92,8 +101,8 @@ export function DailyTargetCard({
         <Stepper
           value={value}
           label={unit}
-          onMinus={() => onChange(Math.max(min, value - step))}
-          onPlus={() => onChange(Math.min(max, value + step))}
+          onMinus={() => onChange(decrementValue)}
+          onPlus={() => onChange(incrementValue)}
         />
         <ScrollView horizontal style={styles.targetQuickScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.targetQuickRail}>
           {quickValues.map((quickValue) => {
@@ -155,17 +164,19 @@ export function Stepper({ value, label, onMinus, onPlus }: { value: number; labe
 export function SurahSearchList({
   selectedNumber,
   onSelect,
-  height = 320
+  height = 320,
+  surahs = allSurahs
 }: {
   selectedNumber: number;
   onSelect: (surah: SurahInfo) => void;
   height?: number;
+  surahs?: SurahInfo[];
 }) {
   const [query, setQuery] = React.useState("");
   const needle = query.trim().toLowerCase();
   const filtered = needle
-    ? allSurahs.filter((surah) => `${surah.number} ${surah.english} ${surah.arabic}`.toLowerCase().includes(needle))
-    : allSurahs;
+    ? surahs.filter((surah) => `${surah.number} ${surah.english} ${surah.arabic}`.toLowerCase().includes(needle))
+    : surahs;
 
   return (
     <View style={styles.surahPicker}>
@@ -234,11 +245,15 @@ export function SurahEndpoint({
 export function KnownSurahRangeCard({
   index,
   range,
+  fromOptions,
+  toOptions,
   onChange,
   onDelete
 }: {
   index: number;
   range: SurahRange;
+  fromOptions?: SurahInfo[];
+  toOptions?: SurahInfo[];
   onChange: (fromSurah: number, toSurah: number) => void;
   onDelete?: () => void;
 }) {
@@ -279,6 +294,7 @@ export function KnownSurahRangeCard({
       {open && (
         <SurahSearchList
           selectedNumber={open === "from" ? range.fromSurah : range.toSurah}
+          surahs={open === "from" ? fromOptions : toOptions}
           height={260}
           onSelect={(surah) => {
             if (open === "from") {

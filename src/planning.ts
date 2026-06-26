@@ -46,6 +46,49 @@ export function makeSurahRange(fromSurah: number, toSurah: number, id: string): 
   return { id, fromSurah, toSurah, label: surahRangeLabel(fromSurah, toSurah) };
 }
 
+export function rebalanceRevisionRanges(ranges: SurahRange[], id: string, fromSurah: number, toSurah: number) {
+  const index = ranges.findIndex((range) => range.id === id);
+  if (index < 0) return ranges;
+  const start = Math.max(1, Math.min(114, Math.min(fromSurah, toSurah)));
+  let end = Math.max(start, Math.min(114, Math.max(fromSurah, toSurah)));
+  const nextRange = ranges[index + 1];
+  if (nextRange) end = Math.min(end, Math.min(nextRange.fromSurah, nextRange.toSurah) - 1);
+  end = Math.max(start, end);
+
+  return ranges
+    .map((range, rangeIndex) => {
+      if (range.id === id) return makeSurahRange(start, end, id);
+      if (rangeIndex < index && Math.max(range.fromSurah, range.toSurah) >= start) {
+        const nextEnd = start - 1;
+        if (nextEnd < Math.min(range.fromSurah, range.toSurah)) return null;
+        return makeSurahRange(Math.min(range.fromSurah, range.toSurah), nextEnd, range.id);
+      }
+      if (rangeIndex > index && Math.min(range.fromSurah, range.toSurah) <= end) {
+        const nextStart = end + 1;
+        if (nextStart > Math.max(range.fromSurah, range.toSurah)) return null;
+        return makeSurahRange(nextStart, Math.max(range.fromSurah, range.toSurah), range.id);
+      }
+      return range;
+    })
+    .filter(Boolean) as SurahRange[];
+}
+
+export function selectableSurahsForRange(ranges: SurahRange[], id: string, endpoint: "from" | "to") {
+  const index = ranges.findIndex((range) => range.id === id);
+  const range = ranges[index];
+  if (!range) return allSurahs;
+  if (endpoint === "from") {
+    const previous = ranges[index - 1];
+    const min = previous ? Math.min(114, Math.min(previous.fromSurah, previous.toSurah) + 1) : 1;
+    const usedAfter = coveredSurahs(ranges.slice(index + 1));
+    return allSurahs.filter((surah) => surah.number >= min && !usedAfter.has(surah.number));
+  }
+  const next = ranges[index + 1];
+  const min = Math.min(range.fromSurah, range.toSurah);
+  const max = next ? Math.min(next.fromSurah, next.toSurah) - 1 : 114;
+  return allSurahs.filter((surah) => surah.number >= min && surah.number <= max);
+}
+
 // Sūrahs already claimed by other revision ranges (so we can prevent overlap).
 export function coveredSurahs(ranges: SurahRange[], excludeId?: string) {
   const set = new Set<number>();

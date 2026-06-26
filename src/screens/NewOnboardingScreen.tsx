@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { ActiveHoursPanel, Arabic, DailyTargetCard, Divider, IconButton, InfoRow, KnownSurahRangeCard, Muted, OptionCard, OutlineButton, Overline, Panel, PrimaryButton, Segmented, ServiceScheduleCard, Stack, Stepper, SurahSearchList, Title, Toggle, activeHoursSummary } from "../components";
-import { activeDayCount, clampSurahRange, makeNewRange, makeSurahRange, newStartLabel, nextFreeRange, recommendedNewAyat, recommendedRevisionAyat, revisionRecommendationText, surahAyahCount, surahNumberFromLabel } from "../planning";
+import { activeDayCount, makeNewRange, makeSurahRange, newStartLabel, nextFreeRange, rebalanceRevisionRanges, recommendedNewAyat, recommendedRevisionAyat, revisionRecommendationText, selectableSurahsForRange, surahAyahCount, surahNumberFromLabel } from "../planning";
 import { allSurahs, SurahInfo } from "../surahs";
 import { colors } from "../theme";
 import { styles } from "../styles";
@@ -67,15 +67,11 @@ export function NewOnboardingScreen({
   };
 
   const updateRevisionRange = (id: string, fromSurah: number, toSurah: number) => {
-    const clamped = clampSurahRange(fromSurah, toSurah, state.revisionRanges, id);
-    const revisionRanges = state.revisionRanges.map((range) =>
-      range.id === id ? makeSurahRange(clamped.from, clamped.to, id) : range
-    );
+    const revisionRanges = rebalanceRevisionRanges(state.revisionRanges, id, fromSurah, toSurah);
     onPatch({ revisionRanges, revisionProgressIndex: 0, revisionProgressAyah: 1, revisionCompletedSurahs: {} });
   };
   const addRevisionRange = () => {
-    const free = nextFreeRange(state.revisionRanges);
-    if (!free) return;
+    const free = nextFreeRange(state.revisionRanges) ?? { from: 114, to: 114 };
     const range = makeSurahRange(free.from, free.to, `rev-${Date.now()}`);
     onPatch({ revisionRanges: [...state.revisionRanges, range], revisionTargetId: range.id, revisionProgressIndex: 0, revisionProgressAyah: 1, revisionCompletedSurahs: {} });
   };
@@ -245,6 +241,8 @@ export function NewOnboardingScreen({
                   key={range.id}
                   index={index}
                   range={range}
+                  fromOptions={selectableSurahsForRange(state.revisionRanges, range.id, "from")}
+                  toOptions={selectableSurahsForRange(state.revisionRanges, range.id, "to")}
                   onChange={(fromSurah, toSurah) => updateRevisionRange(range.id, fromSurah, toSurah)}
                   onDelete={state.revisionRanges.length > 1 ? () => removeRevisionRange(range.id) : undefined}
                 />
@@ -289,30 +287,20 @@ export function NewOnboardingScreen({
               </Panel>
               <DailyTargetCard
                 icon="calendar-outline"
-                title="Round completion goal"
+                title="Khatm completion goal"
                 value={state.revisionRoundDays}
-                unit="days/round"
+                unit="days/khatm"
                 note={revisionRecommendationText(state.revisionRanges, state.revisionRoundDays)}
                 min={3}
                 max={60}
                 step={1}
+                options={[3, 5, 7, 10, 12, 14, 30]}
                 onChange={(revisionRoundDays) =>
                   onPatch({
                     revisionRoundDays,
                     revisionLoad: recommendedRevisionAyat(state.revisionRanges, revisionRoundDays)
                   })
                 }
-              />
-              <DailyTargetCard
-                icon="repeat-outline"
-                title="Daily revision target"
-                value={state.revisionLoad}
-                unit="ayat/day"
-                note={revisionRecommendationText(state.revisionRanges, state.revisionRoundDays)}
-                min={5}
-                max={300}
-                step={5}
-                onChange={(revisionLoad) => onPatch({ revisionLoad })}
               />
             </Stack>
           </View>
