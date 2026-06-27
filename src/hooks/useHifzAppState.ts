@@ -3,14 +3,14 @@ import * as Notifications from "expo-notifications";
 import { useEffect, useRef, useState } from "react";
 import { AppState as RNAppState } from "react-native";
 import { buildDeckContext, buildReminderSettings, serializableState, shouldShowTabs } from "../appStateSelectors";
-import { getDeck, isRevisionFlow } from "../deck";
+import { getDeck, isRevisionFlow, PracticeItem } from "../deck";
 import {
   cancelComebackReminder,
   maybeRequestNativeReviewEveryOtherDay,
   scheduleComebackReminder,
   scheduleHifzNotifications
 } from "../native";
-import { AppState, initialState, ResultStatus, ReviewRecord, Screen, SessionMode } from "../types";
+import { AppState, initialState, KhatmRecord, ResultStatus, ReviewRecord, Screen, SessionMode } from "../types";
 
 const STORAGE_KEY = "hifz:app-state";
 
@@ -134,11 +134,12 @@ export function useHifzAppState() {
     const revisionItem = deck[revisionIndex];
     const revisionEndAyah = isRevisionFlow(revisionItem) ? revisionItem.passage[revisionItem.passage.length - 1]?.num ?? 1 : 1;
     const revisionAyah = picked ? Math.max(1, startAyah ?? 1) : Math.min(revisionEndAyah, Math.max(1, state.revisionProgressAyah || 1));
+    const pickedIndex = Math.min(Math.max(0, startIndex ?? 0), Math.max(0, deck.length - 1));
     patch({
       screen: "session",
       sessionMode: mode,
       sessionPhase: "running",
-      cardIndex: mode === "revision" ? revisionIndex : 0,
+      cardIndex: mode === "revision" ? revisionIndex : picked ? pickedIndex : 0,
       revealed: false,
       revisionReadAyah: 0,
       revisionResumeAyah: mode === "revision" ? revisionAyah : 0,
@@ -192,13 +193,45 @@ export function useHifzAppState() {
       next.revisionCompletedSurahs = allDone ? {} : completedSurahs;
       next.revisionProgressIndex = allDone ? 0 : Math.max(0, nextRemainingIndex);
       next.revisionProgressAyah = 1;
-      if (allDone) next.revisionRounds = (state.revisionRounds ?? 0) + 1;
+      if (allDone) {
+        next.revisionRounds = (state.revisionRounds ?? 0) + 1;
+        next.khatms = [buildKhatmRecord(state, deck), ...(state.khatms ?? [])].slice(0, 50);
+      }
       const flowEnd = item.passage[item.passage.length - 1]?.num ?? item.start;
       const resume = Math.max(item.start, state.revisionResumeAyah || item.start);
       Object.assign(next, dailyRevisionFields(state, flowEnd - resume + 1));
     }
     patch(next);
     setTimeout(advance, 120);
+  };
+
+  const completeRevisionSurah = (index: number) => {
+    const deck = getDeck("revision", deckContext);
+    const item = deck[index];
+    if (!isRevisionFlow(item)) return;
+    const key = String(item.surah ?? index);
+    const completedSurahs = { ...(state.revisionCompletedSurahs ?? {}), [key]: true };
+    const allDone = deck.every((entry, entryIndex) => !isRevisionFlow(entry) || completedSurahs[String(entry.surah ?? entryIndex)]);
+    const nextRemainingIndex = deck.findIndex((entry, entryIndex) => isRevisionFlow(entry) && !completedSurahs[String(entry.surah ?? entryIndex)]);
+    const flowEnd = item.passage[item.passage.length - 1]?.num ?? item.start;
+    const record: ReviewRecord = {
+      id: `revision-${key}-quick-${Date.now()}`,
+      mode: "revision",
+      ayahLabel: `${item.label} · completed`,
+      result: "finished",
+      timestamp: new Date().toISOString(),
+      surah: item.surah ?? 0,
+      ayah: flowEnd
+    };
+    patch({
+      revisionCompletedSurahs: allDone ? {} : completedSurahs,
+      revisionProgressIndex: allDone ? 0 : Math.max(0, nextRemainingIndex),
+      revisionProgressAyah: 1,
+      revisionRounds: allDone ? (state.revisionRounds ?? 0) + 1 : state.revisionRounds,
+      khatms: allDone ? [buildKhatmRecord(state, deck), ...(state.khatms ?? [])].slice(0, 50) : state.khatms,
+      reviewHistory: [record, ...(state.reviewHistory ?? [])].slice(0, 80),
+      ...dailyRevisionFields(state, item.passage.length)
+    });
   };
 
   // Revision: user taps the āyah where they got stuck — enter "read" mode to practise it.
@@ -248,10 +281,25 @@ export function useHifzAppState() {
     startSession,
     advance,
     markCard,
+    completeRevisionSurah,
     stopAtAyah,
     addReadWeak,
     resumeRevision
   };
+}
+
+// Snapshot a completed khatm: total āyāt revised and how many distinct āyāt were weak this round.
+function buildKhatmRecord(state: AppState, deck: PracticeItem[]): KhatmRecord {
+  const total = deck.reduce((sum, entry) => sum + (isRevisionFlow(entry) ? entry.passage.length : 0), 0);
+  const since = state.khatms?.[0] ? new Date(state.khatms[0].completedAt).getTime() : 0;
+  const weak = new Map<string, { surah: number; ayah: number; label: string }>();
+  (state.reviewHistory ?? []).forEach((r) => {
+    const isWeak = r.result === "shaky" || r.result === "forgot" || String(r.result).startsWith("stuck@");
+    if (isWeak && r.surah && r.ayah && new Date(r.timestamp).getTime() >= since) {
+      weak.set(`${r.surah}:${r.ayah}`, { surah: r.surah, ayah: r.ayah, label: r.ayahLabel });
+    }
+  });
+  return { id: `khatm-${Date.now()}`, completedAt: new Date().toISOString(), weak: weak.size, total, weakAyahs: Array.from(weak.values()) };
 }
 
 // Track āyāt revised today (resets when the calendar day changes).
@@ -323,15 +371,17 @@ function surahNumberOf(label: string) {
 }
 
 function migrateSavedState(saved: Partial<AppState>): Partial<AppState> {
+  const legacyRevisionOrder = (saved as unknown as { revisionOrder?: string }).revisionOrder;
+  const normalized: Partial<AppState> = legacyRevisionOrder === "select" ? { ...saved, revisionOrder: "forward" } : saved;
   const oldDefaultRange =
-    saved.revisionRanges?.length === 1 &&
-    saved.revisionRanges[0].id === "rev-default" &&
-    saved.revisionRanges[0].fromSurah === 1 &&
-    saved.revisionRanges[0].toSurah === 114;
-  if (!oldDefaultRange) return saved;
+    normalized.revisionRanges?.length === 1 &&
+    normalized.revisionRanges[0].id === "rev-default" &&
+    normalized.revisionRanges[0].fromSurah === 1 &&
+    normalized.revisionRanges[0].toSurah === 114;
+  if (!oldDefaultRange) return normalized;
   return {
-    ...saved,
-    revisionLoad: saved.revisionLoad === 30 ? 5 : saved.revisionLoad,
+    ...normalized,
+    revisionLoad: normalized.revisionLoad === 30 ? 5 : normalized.revisionLoad,
     revisionRanges: [{ id: "rev-default", fromSurah: 1, toSurah: 1, label: "1 · Al-Fatihah" }],
     revisionProgressIndex: 0,
     revisionProgressAyah: 1,

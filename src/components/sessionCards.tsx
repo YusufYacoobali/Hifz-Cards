@@ -35,11 +35,11 @@ export function HeroHeader({ state, safeTop }: { state: AppState; safeTop: numbe
   );
 }
 
-export function AyahCard({ card, note, arScale = 1 }: { card: HifzCard; note?: string; arScale?: number }) {
+export function AyahCard({ card, note, arScale = 1, hideMeta }: { card: HifzCard; note?: string; arScale?: number; hideMeta?: boolean }) {
   const surahName = card.surah ? card.surah.split("·").slice(1).join("·").trim() || card.surah : "Al-Mulk";
   return (
     <ScrollView style={styles.ayahCardScroll} contentContainerStyle={styles.ayahCardBody} showsVerticalScrollIndicator={false}>
-      <Text style={styles.sessionMeta}>Sūrah {surahName} · Āyah {card.num}</Text>
+      {!hideMeta && <Text style={styles.sessionMeta}>Sūrah {surahName} · Āyah {card.num}</Text>}
       {!!note && <Text style={styles.continueNote}>{note}</Text>}
       <Arabic style={[styles.memoriseArabic, { fontSize: 27 * arScale, lineHeight: 54 * arScale }]}>{card.full}</Arabic>
       {!!card.tr && (
@@ -59,6 +59,8 @@ export function RevisionCard({
   script,
   onReveal,
   onStuck,
+  onMarkWeak,
+  isWeak,
   arScale = 1
 }: {
   item: RevisionFlow;
@@ -67,6 +69,8 @@ export function RevisionCard({
   script: ArabicScript;
   onReveal: () => void;
   onStuck: (ayah: number) => void;
+  onMarkWeak: (ayah: number) => void;
+  isWeak: (ayah: number) => boolean;
   arScale?: number;
 }) {
   const [showFromJuz, setShowFromJuz] = useState(0);
@@ -85,9 +89,10 @@ export function RevisionCard({
           card={ayahCard(item.surah ?? 1, startAt, script)}
           note="Recite from memory — how far can you go?"
           arScale={arScale}
+          hideMeta
         />
       ) : (
-        <Text style={styles.sessionMeta}>Sūrah {item.label} · from āyah {startAt}</Text>
+        null
       )}
       {revealed && (
         <>
@@ -114,8 +119,8 @@ export function RevisionCard({
           {showHelp && (
             <View style={styles.helpBubble}>
               <Text style={styles.helpBubbleText}>
-                Recite from memory. When you slip, tap that āyah — choose whether to add it to weak cards, then practise it and
-                carry on. You're at Juz {currentJuz}; the chips hide earlier Juz so you can jump ahead.
+                Recite from memory. Tap the āyah where you stop to practise from there, or use the bookmark beside any āyah to
+                add it to weak cards without leaving the list. You're at Juz {currentJuz}; the chips hide earlier Juz so you can jump ahead.
               </Text>
             </View>
           )}
@@ -133,10 +138,21 @@ export function RevisionCard({
                       <View style={styles.juzDividerLine} />
                     </View>
                   )}
-                  <Pressable style={styles.passageRow} onPress={() => onStuck(ayah.num)}>
-                    <Text style={styles.ayahBadge}>{ayah.num}</Text>
-                    <Arabic style={[styles.passageText, { fontSize: 21 * arScale, lineHeight: 42 * arScale }]}>{ayah.text}</Arabic>
-                  </Pressable>
+                  <View style={styles.passageRow}>
+                    <View style={styles.passageLeftRail}>
+                      <Text style={styles.ayahBadge}>{ayah.num}</Text>
+                      <Pressable
+                        style={[styles.weakQuickButton, isWeak(ayah.num) && styles.weakQuickButtonDone]}
+                        onPress={() => onMarkWeak(ayah.num)}
+                        hitSlop={8}
+                      >
+                        <Ionicons name={isWeak(ayah.num) ? "checkmark" : "bookmark-outline"} size={13} color={isWeak(ayah.num) ? "#fff" : colors.goldDark} />
+                      </Pressable>
+                    </View>
+                    <Pressable style={styles.passageMain} onPress={() => onStuck(ayah.num)}>
+                      <Arabic style={[styles.passageText, { fontSize: 21 * arScale, lineHeight: 42 * arScale }]}>{ayah.text}</Arabic>
+                    </Pressable>
+                  </View>
                 </React.Fragment>
               );
             })}

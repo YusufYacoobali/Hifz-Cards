@@ -112,23 +112,24 @@ export function NewOnboardingScreen({
             </View>
             <Title>Memorise with{"\n"}gentle recall</Title>
             <Muted>
-              Hifz Cards keeps Qur'an review present through the day without making it noisy or complicated.
+              Hifz Cards uses spaced retrieval: small, well-timed prompts that ask you to recall before you re-read, so memorisation
+              strengthens without turning your day into noise.
             </Muted>
             <Stack>
               <InfoRow
                 icon="leaf-outline"
                 title="New memorisation"
-                text="A reminder service that nudges you through the sūrah you are learning."
+                text="Example: a sabaq nudge every 2 hours asks for the next new āyah, then cards help you mark solid, shaky, or forgotten."
               />
               <InfoRow
                 icon="repeat-outline"
                 title="Revision"
-                text="A separate service that resurfaces what you already know."
+                text="Example: a revision nudge every 4 hours starts from your known range, prioritising weak spots and continuing where you left off."
               />
               <InfoRow
                 icon="albums-outline"
                 title="Swipeable test cards"
-                text="Reveal, mark, and repeat āyāt until they settle."
+                text="Recall first, reveal only when needed, then repeat weak āyāt sooner and strong āyāt later."
               />
             </Stack>
             <Panel style={styles.darkQuote}>
@@ -200,7 +201,10 @@ export function NewOnboardingScreen({
         {step === "newReminders" && (
           <View>
             <Title>New memorisation{"\n"}reminders</Title>
-            <Muted>Its own schedule — gentle nudges to recite the next new āyah from {state.newRange.surah}.</Muted>
+            <Muted>
+              This is for sabaq only. A common starting rhythm is every 2 hours during your active window: short, repeated recall of
+              the next new āyah before it fades.
+            </Muted>
             <Stack>
               <ServiceScheduleCard
                 icon="leaf-outline"
@@ -233,7 +237,7 @@ export function NewOnboardingScreen({
             <Title>What have you{"\n"}already memorised?</Title>
             <Muted>
               Add the sūrah ranges you know — e.g. An-Naba → An-Nās, or Al-Fātiḥah → Al-Baqarah. They can be separate blocks;
-              revision resurfaces all of them.
+              one full revision khatm means completing all of these known sections.
             </Muted>
             <Stack>
               {state.revisionRanges.map((range, index) => (
@@ -255,7 +259,10 @@ export function NewOnboardingScreen({
         {step === "revisionReminders" && (
           <View>
             <Title>Revision{"\n"}reminders</Title>
-            <Muted>A separate schedule for strengthening what you already know.</Muted>
+            <Muted>
+              Revision has its own schedule. For example, if sabaq is every 2 hours, revision might be every 4 hours: less frequent,
+              but deeper, so older hifz keeps getting tested.
+            </Muted>
             <Stack>
               <ServiceScheduleCard
                 icon="repeat-outline"
@@ -279,8 +286,8 @@ export function NewOnboardingScreen({
                   </View>
                 </View>
                 <Segmented
-                  values={["forward", "backward", "select"]}
-                  labels={["Front → back", "Back → front", "I'll choose"]}
+                  values={["forward", "backward"]}
+                  labels={["Front → back", "Back → front"]}
                   active={state.revisionOrder ?? "forward"}
                   onChange={(value) => onPatch({ revisionOrder: value as RevisionOrder, revisionProgressIndex: 0, revisionProgressAyah: 1, revisionCompletedSurahs: {} })}
                 />
@@ -309,7 +316,7 @@ export function NewOnboardingScreen({
         {step === "schedule" && (
           <View>
             <Title>When can we{"\n"}reach you?</Title>
-            <Muted>Both reminder services stay inside these hours — nothing arrives outside them.</Muted>
+            <Muted>Both reminder services stay inside these hours. The aim is consistency without fatigue, so prompts pause outside your real availability.</Muted>
             <ActiveHoursPanel state={state} onPatch={onPatch} />
             <Panel style={[styles.settingRow, styles.scheduleSpacer]}>
               <View style={styles.iconTile}>

@@ -1,4 +1,12 @@
-﻿export type Screen = "onboarding" | "home" | "notif" | "modes" | "session" | "progress" | "board" | "recap" | "profile";
+﻿export type Screen = "onboarding" | "home" | "notif" | "modes" | "session" | "progress" | "board" | "recap" | "profile" | "khatms";
+
+export type KhatmRecord = {
+  id: string;
+  completedAt: string;
+  weak: number;
+  total: number;
+  weakAyahs?: Array<{ surah: number; ayah: number; label: string }>;
+};
 export type Goal = "new" | "revision" | "both";
 export type SessionMode = "new" | "revision" | "weak";
 export type ResultStatus = "solid" | "shaky" | "forgot" | "finished" | string;
@@ -6,7 +14,7 @@ export type CommunityMode = "solo" | "friends" | "class";
 export type ActiveHoursMode = "same" | "weekend" | "daily";
 export type ArabicScript = "uthmani" | "indopak";
 export type ArabicSize = "small" | "medium" | "large";
-export type RevisionOrder = "forward" | "backward" | "select";
+export type RevisionOrder = "forward" | "backward";
 
 export const arabicSizeScale: Record<ArabicSize, number> = { small: 0.85, medium: 1, large: 1.2 };
 
@@ -94,6 +102,7 @@ export type AppState = {
   revisionOrder: RevisionOrder;
   revisionDoneToday: number;
   revisionDoneDate: string;
+  khatms: KhatmRecord[];
   sessionPhase: "idle" | "running" | "done";
   results: Record<string, ResultStatus>;
   notificationsScheduled: number;
@@ -177,6 +186,7 @@ export const initialState: AppState = {
   revisionOrder: "forward",
   revisionDoneToday: 0,
   revisionDoneDate: "",
+  khatms: [],
   sessionPhase: "idle",
   results: {},
   notificationsScheduled: 0,

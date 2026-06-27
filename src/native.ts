@@ -6,9 +6,6 @@ import { buildNewDeck, buildRevisionDeck } from "./deck";
 import { firstWords } from "./quran";
 import { ActiveHoursMode, ArabicScript, DailyActiveHours, Days, MemorisationRange, RevisionOrder, SessionMode, SurahRange } from "./types";
 
-// Minutes after the user leaves the app before the "come back" reminder fires.
-export const COMEBACK_DELAY_MIN = 20;
-
 export type ReminderSettings = {
   sabaqOn: boolean;
   revisionOn: boolean;
@@ -304,12 +301,15 @@ function comebackContent(settings: ReminderSettings) {
 }
 
 // Schedule a single reminder ~20 min after the user leaves the app (within active hours).
-export async function scheduleComebackReminder(settings: ReminderSettings, minutes = COMEBACK_DELAY_MIN) {
+export async function scheduleComebackReminder(settings: ReminderSettings, minutesOverride?: number) {
   try {
     await cancelComebackReminder();
     if (!settings.sabaqOn && !settings.revisionOn) return;
     const permissions = await Notifications.getPermissionsAsync();
     if (permissions.status !== "granted") return;
+    // Fire after the user's chosen cadence for whichever service this reminder is for.
+    const freqValue = settings.sabaqOn ? settings.sabaqFreq : settings.revisionFreq;
+    const minutes = minutesOverride ?? frequencyMinutes(freqValue);
     const date = nextActiveDate(settings, minutes);
     const { title, body, data } = comebackContent(settings);
     const id = await Notifications.scheduleNotificationAsync({

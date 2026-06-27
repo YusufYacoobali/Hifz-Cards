@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { Platform, ScrollView, Text, View } from "react-native";
-import { ActiveHoursPanel, Arabic, ArabicDisplayCard, DailyTargetCard, Divider, Header, KnownSurahRangeCard, Overline, OutlineButton, Panel, ReminderCard, Stack, Stepper, SurahSearchList, SwitchRow } from "../components";
+import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { ActiveHoursPanel, Arabic, DailyTargetCard, Divider, Header, KnownSurahRangeCard, Overline, OutlineButton, Panel, ReminderCard, Stack, Stepper, SurahSearchList, SwitchRow } from "../components";
 import { makeNewRange, makeSurahRange, newStartLabel, nextFreeRange, rebalanceRevisionRanges, recommendedNewAyat, recommendedRevisionAyat, revisionRecommendationText, selectableSurahsForRange, surahAyahCount, surahNumberFromLabel } from "../planning";
 import { SurahInfo } from "../surahs";
 import { colors } from "../theme";
@@ -60,11 +60,19 @@ export function NotificationsScreen({
     });
   };
 
+  const [open, setOpen] = React.useState({ new: true, revision: false });
+  const toggle = (key: "new" | "revision") => setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+
   return (
     <ScrollView style={styles.fullScreen} contentContainerStyle={[styles.settingsContent, { paddingTop: safeTop + 8, paddingBottom: safeBottom + (Platform.OS === "android" ? 48 : 32) }]} showsVerticalScrollIndicator={false}>
       <Header title="Card settings" onBack={() => onNav("home")} />
       <View style={styles.settingsSection}>
-        <Overline>New memorisation</Overline>
+        <Pressable style={styles.collapseHeader} onPress={() => toggle("new")}>
+          <Overline>New memorisation</Overline>
+          <Ionicons name={open.new ? "chevron-up" : "chevron-down"} size={18} color={colors.faint} />
+        </Pressable>
+        {open.new && (
+          <>
         <Panel style={styles.focusPanel}>
           <View style={styles.rowBetween}>
             <View style={styles.flex}>
@@ -106,10 +114,17 @@ export function NotificationsScreen({
           days={state.sabaqDays}
           onToggleDay={(day) => togglePlanDay("sabaqDays", day)}
         />
+          </>
+        )}
       </View>
 
       <View style={styles.settingsSection}>
-        <Overline>Revision</Overline>
+        <Pressable style={styles.collapseHeader} onPress={() => toggle("revision")}>
+          <Overline>Revision</Overline>
+          <Ionicons name={open.revision ? "chevron-up" : "chevron-down"} size={18} color={colors.faint} />
+        </Pressable>
+        {open.revision && (
+          <>
         <Panel style={styles.revisionSettingsPanel}>
           <View style={styles.settingRowInner}>
             <View style={styles.iconTile}>
@@ -166,16 +181,8 @@ export function NotificationsScreen({
           order={state.revisionOrder ?? "forward"}
           onOrder={(revisionOrder) => onPatch({ revisionOrder, revisionProgressIndex: 0, revisionProgressAyah: 1, revisionCompletedSurahs: {} })}
         />
-      </View>
-
-      <View style={styles.settingsSection}>
-        <Overline>Display</Overline>
-        <ArabicDisplayCard
-          script={state.arabicScript ?? "uthmani"}
-          size={state.arabicSize ?? "medium"}
-          onScript={(arabicScript) => onPatch({ arabicScript })}
-          onSize={(arabicSize) => onPatch({ arabicSize })}
-        />
+          </>
+        )}
       </View>
 
       <View style={styles.settingsSection}>
@@ -191,6 +198,9 @@ export function NotificationsScreen({
           <Ionicons name="calendar-outline" size={20} color={colors.mint} />
           <View style={styles.flex}>
             <Text style={styles.cardTitle}>{state.notificationsScheduled} local prompts scheduled</Text>
+            <Text style={styles.cardSubtitle}>
+              {state.sabaqOn ? `New: ${state.sabaqFreq}` : "New: off"} · {state.revisionOn ? `Revision: ${state.revisionFreq}` : "Revision: off"}
+            </Text>
             <Text style={styles.cardSubtitle}>Permission: {state.notificationPermission}. Plan refreshes when you edit settings.</Text>
           </View>
         </Panel>

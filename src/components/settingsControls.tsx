@@ -609,8 +609,8 @@ export function ReminderCard({
         <>
           <Overline>Revision order</Overline>
           <Segmented
-            values={["forward", "backward", "select"]}
-            labels={["Front → back", "Back → front", "I'll choose"]}
+            values={["forward", "backward"]}
+            labels={["Front → back", "Back → front"]}
             active={order}
             onChange={(value) => onOrder(value as RevisionOrder)}
           />

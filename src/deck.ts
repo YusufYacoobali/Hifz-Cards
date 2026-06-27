@@ -17,8 +17,6 @@ export type DeckContext = {
 
 // How many new āyāt to surface in one sabaq session, counting from the start point.
 const NEW_SESSION_SIZE = 8;
-// Cap how many sūrahs a single revision session walks through.
-const MAX_REVISION_SURAHS = 15;
 
 function surahNumberOf(label: string) {
   return Number(label.split("·")[0]?.trim()) || 0;
@@ -67,12 +65,13 @@ export function buildWeakDeck(history: ReviewRecord[] = [], script: ArabicScript
   const seen = new Set<string>();
   const cards: HifzCard[] = [];
   for (const record of history) {
-    const isWeak =
-      record.result === "shaky" || record.result === "forgot" || String(record.result).startsWith("stuck@");
-    if (!isWeak || !record.surah || !record.ayah) continue;
+    if (!record.surah || !record.ayah) continue;
     const key = `${record.surah}:${record.ayah}`;
     if (seen.has(key)) continue;
     seen.add(key);
+    const isWeak =
+      record.result === "shaky" || record.result === "forgot" || String(record.result).startsWith("stuck@");
+    if (!isWeak) continue;
     const card = ayahCard(record.surah, record.ayah, script);
     if (card.full) cards.push(card);
   }
@@ -93,8 +92,7 @@ export function buildRevisionDeck(
   });
   let ordered = Array.from(new Set(numbers));
   if (order === "backward") ordered = ordered.reverse();
-  const unique = ordered.slice(0, MAX_REVISION_SURAHS);
-  const flows = unique
+  const flows = ordered
     .map((number) => {
       const meta = surahMeta(number);
       const passage = surahVerses(number, script);

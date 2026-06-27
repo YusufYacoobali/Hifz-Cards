@@ -904,6 +904,12 @@ export const styles = StyleSheet.create({
     bottom: Platform.OS === "android" ? 104 : 90,
     ...heavyShadow
   },
+  collapseHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 4
+  },
   settingsContent: {
     padding: 20,
     paddingTop: 18,
@@ -1029,6 +1035,43 @@ export const styles = StyleSheet.create({
   listPanel: {
     paddingVertical: 0
   },
+  profileActionRow: {
+    flexDirection: "row",
+    gap: 10
+  },
+  profileActionTile: {
+    flex: 1,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    gap: 8,
+    ...shadow
+  },
+  profileActionDanger: {
+    borderColor: colors.redPale
+  },
+  profileActionIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: colors.mintPale,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  profileActionIconDanger: {
+    backgroundColor: colors.redPale
+  },
+  profileActionLabel: {
+    fontSize: 11.5,
+    fontWeight: "800",
+    color: colors.text,
+    textAlign: "center",
+    lineHeight: 15
+  },
   reciterPanel: {
     gap: 12
   },
@@ -1130,7 +1173,7 @@ export const styles = StyleSheet.create({
   },
   revisionPickList: {
     gap: 8,
-    marginTop: -4
+    marginTop: 12
   },
   revisionPickRow: {
     flexDirection: "row",
@@ -1142,6 +1185,22 @@ export const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 14
+  },
+  revisionPickMain: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12
+  },
+  revisionQuickDone: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.mintPale,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0
   },
   revisionPickBadge: {
     minWidth: 26,
@@ -1180,6 +1239,25 @@ export const styles = StyleSheet.create({
     fontWeight: "800",
     fontSize: 13,
     ...shadow
+  },
+  revisionTitlePill: {
+    maxWidth: "62%",
+    paddingHorizontal: 12,
+    textAlign: "center",
+    fontSize: Platform.OS === "android" ? 10.5 : 11,
+    letterSpacing: 0.5
+  },
+  weakTitlePill: {
+    color: colors.goldDark
+  },
+  sessionSubtitle: {
+    marginTop: 7,
+    paddingHorizontal: 26,
+    color: colors.muted,
+    textAlign: "center",
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "800"
   },
   sessionProgressTrack: {
     height: 5,
@@ -1332,11 +1410,21 @@ export const styles = StyleSheet.create({
   },
   markRow: {
     position: "absolute",
-    left: Platform.OS === "android" ? 18 : 22,
-    right: Platform.OS === "android" ? 18 : 22,
+    left: 0,
+    right: 0,
     bottom: 30,
+    paddingHorizontal: Platform.OS === "android" ? 18 : 22,
+    alignItems: "center"
+  },
+  markRowInner: {
     flexDirection: "row",
-    gap: Platform.OS === "android" ? 7 : 9
+    width: "100%",
+    maxWidth: 460,
+    gap: Platform.OS === "android" ? 8 : 10
+  },
+  sessionPrimaryAction: {
+    flex: 1,
+    minWidth: 0
   },
   weakActionButton: {
     backgroundColor: colors.gold,
@@ -1359,7 +1447,7 @@ export const styles = StyleSheet.create({
   markButton: {
     flex: 1,
     minWidth: 0,
-    minHeight: Platform.OS === "android" ? 58 : 72,
+    minHeight: Platform.OS === "android" ? 56 : 64,
     borderRadius: Platform.OS === "android" ? 16 : 20,
     borderWidth: 1.5,
     backgroundColor: "#fffdf8",
@@ -1537,22 +1625,48 @@ export const styles = StyleSheet.create({
   passageRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 10,
+    gap: 8,
     paddingVertical: Platform.OS === "android" ? 7 : 10,
     borderBottomWidth: 1,
     borderBottomColor: "#f4efe5"
   },
-  ayahBadge: {
+  passageMain: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10
+  },
+  passageLeftRail: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 4,
+    flexShrink: 0
+  },
+  weakQuickButton: {
     width: 24,
     height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.goldPale,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0
+  },
+  weakQuickButtonDone: {
+    backgroundColor: colors.mint
+  },
+  ayahBadge: {
+    minWidth: 24,
+    height: 24,
     borderRadius: 7,
+    paddingHorizontal: 4,
     backgroundColor: colors.mintPale,
     color: "#2f5d4f",
     textAlign: "center",
     lineHeight: 24,
     fontSize: 11,
-    fontWeight: "900",
-    marginTop: 7
+    fontWeight: "900"
   },
   passageText: {
     flex: 1,
@@ -1734,6 +1848,109 @@ export const styles = StyleSheet.create({
     aspectRatio: 1,
     borderRadius: 7
   },
+  monthGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 5,
+    marginTop: 14
+  },
+  monthDay: {
+    width: "12.4%",
+    aspectRatio: 1,
+    borderRadius: 6
+  },
+  monthStrip: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 2,
+    marginTop: 14,
+    height: 30
+  },
+  monthStripBar: {
+    flex: 1,
+    height: "100%",
+    borderRadius: 2
+  },
+  monthStripToday: {
+    borderWidth: 1.5,
+    borderColor: colors.gold
+  },
+  weakPillWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 7,
+    marginTop: 12
+  },
+  weakPill: {
+    backgroundColor: colors.goldPale,
+    borderRadius: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 11
+  },
+  weakPillText: {
+    color: colors.goldDark,
+    fontWeight: "900",
+    fontSize: 12.5
+  },
+  khatmEmpty: {
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 26
+  },
+  khatmCard: {
+    gap: 9
+  },
+  khatmCurrent: {
+    borderWidth: 1.5,
+    borderColor: colors.gold
+  },
+  homeKhatmCard: {
+    gap: 11
+  },
+  homeKhatmRing: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 4,
+    borderColor: colors.gold,
+    backgroundColor: colors.goldPale,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  homeKhatmPct: {
+    fontSize: 13,
+    fontWeight: "900",
+    color: colors.green
+  },
+  khatmBar: {
+    flexDirection: "row",
+    height: 10,
+    borderRadius: 6,
+    overflow: "hidden",
+    backgroundColor: colors.line
+  },
+  khatmWeakList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 7,
+    marginTop: 4
+  },
+  khatmWeakChip: {
+    borderRadius: 999,
+    backgroundColor: colors.goldPale,
+    paddingVertical: 6,
+    paddingHorizontal: 10
+  },
+  khatmWeakText: {
+    color: colors.goldDark,
+    fontSize: 11,
+    fontWeight: "900"
+  },
+  khatmMeta: {
+    fontSize: 12,
+    color: colors.muted,
+    fontWeight: "700"
+  },
   todayOutline: {
     borderWidth: 2,
     borderColor: colors.gold
@@ -1832,6 +2049,40 @@ export const styles = StyleSheet.create({
   },
   groupGoal: {
     backgroundColor: colors.green
+  },
+  comingSoonHero: {
+    borderRadius: 24,
+    padding: 22,
+    alignItems: "center",
+    marginTop: 14,
+    ...heavyShadow
+  },
+  comingSoonBadge: {
+    backgroundColor: "rgba(233,217,168,.18)",
+    borderRadius: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 14
+  },
+  comingSoonBadgeText: {
+    color: colors.gold,
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1.4
+  },
+  comingSoonTitle: {
+    color: "#fff",
+    fontSize: 19,
+    fontWeight: "900",
+    textAlign: "center",
+    lineHeight: 25,
+    marginTop: 12
+  },
+  comingSoonBody: {
+    color: "#bcd8cf",
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: "center",
+    marginTop: 8
   },
   groupTitle: {
     color: "#fff",
@@ -1935,9 +2186,23 @@ export const styles = StyleSheet.create({
     fontSize: 20,
     lineHeight: 36
   },
+  recapShareArea: {
+    backgroundColor: colors.green,
+    borderRadius: 26,
+    padding: 14,
+    gap: 14
+  },
   recapStats: {
     flexDirection: "row",
     gap: 10
+  },
+  effortNote: {
+    color: "#bcd8cf",
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: "center",
+    paddingHorizontal: 6,
+    marginTop: 2
   },
   recapStat: {
     flex: 1,

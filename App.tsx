@@ -29,12 +29,12 @@ import * as Sharing from "expo-sharing";
 import { captureRef } from "react-native-view-shot";
 import { playAyah, prefetchAyat, stopAyah } from "./src/audio";
 import { reciterById, reciters } from "./src/reciters";
-import { remainingRevisionRoundItems, revisionRoundItems, revisionTotals, surahNumberFromLabel } from "./src/planning";
+import { currentKhatmStats, monthConsistency, remainingRevisionRoundItems, revisionRoundItems, revisionTotals, surahNumberFromLabel } from "./src/planning";
 import { colors } from "./src/theme";
 import { styles } from "./src/styles";
 import { NewOnboardingScreen } from "./src/screens/NewOnboardingScreen";
 import { NotificationsScreen } from "./src/screens/NotificationsScreen";
-import { Arabic, ArabicFontContext, AyahCard, BottomTabs, Divider, Header, HeroHeader, IconButton, Legend, MarkButton, ModeCard, OutlineButton, Overline, Panel, Podium, PrimaryButton, ProfileStat, ProgressLine, RecapStat, ResultBox, RevisionCard, Segmented, SettingsRow, StatCard, formatDueDate, formatHistoryTime, resultColor, resultLabel, tabBarHeight } from "./src/components";
+import { Arabic, ArabicDisplayCard, ArabicFontContext, AyahCard, BottomTabs, Divider, Header, HeroHeader, IconButton, Legend, MarkButton, ModeCard, OutlineButton, Overline, Panel, Podium, PrimaryButton, ProfileStat, ProgressLine, RecapStat, ResultBox, RevisionCard, Segmented, SettingsRow, StatCard, formatDueDate, formatHistoryTime, resultColor, resultLabel, tabBarHeight } from "./src/components";
 import { AppState, arabicSizeScale, ResultStatus, Screen, SessionMode } from "./src/types";
 
 export default function App() {
@@ -51,7 +51,7 @@ export default function App() {
 }
 
 function AppContent() {
-  const { state, showTabs, patch, nav, beginApp, startSession, markCard, stopAtAyah, addReadWeak, resumeRevision } = useHifzAppState();
+  const { state, showTabs, patch, nav, beginApp, startSession, markCard, completeRevisionSurah, stopAtAyah, addReadWeak, resumeRevision } = useHifzAppState();
   const insets = useSafeAreaInsets();
   const safe = {
     top: Math.max(insets.top, Platform.OS === "ios" ? 44 : 0),
@@ -74,7 +74,7 @@ function AppContent() {
           )}
           {state.screen === "home" && <HomeScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onNav={nav} onModes={() => nav("modes")} />}
           {state.screen === "notif" && <NotificationsScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onPatch={patch} onNav={nav} />}
-          {state.screen === "modes" && <ModeScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onNav={nav} onStart={startSession} />}
+          {state.screen === "modes" && <ModeScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onNav={nav} onStart={startSession} onCompleteSurah={completeRevisionSurah} />}
           {state.screen === "session" && (
             <SessionScreen
               state={state}
@@ -90,6 +90,7 @@ function AppContent() {
             />
           )}
           {state.screen === "progress" && <ProgressScreen state={state} safeTop={safe.top} onNav={nav} onStart={startSession} />}
+          {state.screen === "khatms" && <KhatmsScreen state={state} safeTop={safe.top} onNav={nav} onStart={startSession} />}
           {state.screen === "board" && <BoardScreen state={state} safeTop={safe.top} onPatch={patch} />}
           {state.screen === "recap" && <RecapScreen state={state} safeTop={safe.top} onNav={nav} />}
           {state.screen === "profile" && <ProfileScreen state={state} safeTop={safe.top} onPatch={patch} onNav={nav} />}
@@ -115,6 +116,8 @@ function HomeScreen({
 }) {
   const dashboard = getDashboardStats(state);
   const revision = revisionTotals(state);
+  const homeKhatm = currentKhatmStats(state);
+  const homeHistory = state.reviewHistory ?? [];
 
   return (
     <View style={styles.fullScreen}>
@@ -137,7 +140,7 @@ function HomeScreen({
                 </Text>
                 <Text style={styles.cardSubtitle}>
                   {state.revisionOn
-                    ? `${revision.doneToday}/${revision.dailyTarget} revised today · round ${revision.rounds + 1}`
+                    ? `${revision.doneToday}/${revision.dailyTarget} revised today · full khatm ${revision.rounds + 1}`
                     : `New memorisation continues from ${dashboard.currentSurah} ${dashboard.rangeLabel}.`}
                 </Text>
               </View>
@@ -175,6 +178,28 @@ function HomeScreen({
               ))}
             </View>
           </Panel>
+          {state.revisionOn && (
+            <Pressable style={[styles.panel, styles.homeKhatmCard]} onPress={() => onNav("khatms")}>
+              <View style={styles.rowBetween}>
+                <View style={styles.flex}>
+                  <Overline>Current khatm</Overline>
+                  <Text style={styles.cardTitle}>{homeKhatm.done} of {homeKhatm.total} āyāt revised</Text>
+                </View>
+                <View style={styles.homeKhatmRing}>
+                  <Text style={styles.homeKhatmPct}>{homeKhatm.pct}%</Text>
+                </View>
+              </View>
+              <View style={styles.khatmBar}>
+                <View style={{ width: `${homeKhatm.strongPct}%`, backgroundColor: colors.mint }} />
+                <View style={{ width: `${homeKhatm.weakPct}%`, backgroundColor: homeKhatm.weakPct > 25 ? colors.red : colors.goldDark }} />
+                <View style={{ width: `${homeKhatm.remainPct}%`, backgroundColor: colors.line }} />
+              </View>
+              <View style={styles.rowBetween}>
+                <Text style={styles.cardSubtitle}>{homeKhatm.weakAyahs.length} weak so far · khatm {homeKhatm.rounds + 1}</Text>
+                <Text style={styles.greenStrong}>See khatms ›</Text>
+              </View>
+            </Pressable>
+          )}
           <Panel style={styles.notificationSummary}>
             <View style={styles.flex}>
               <Overline>Reminders today</Overline>
@@ -182,6 +207,23 @@ function HomeScreen({
               <Text style={styles.cardSubtitle}>Custom nudges inside your active hours.</Text>
             </View>
             <IconButton name="notifications-outline" onPress={() => onNav("notif")} />
+          </Panel>
+          <Panel>
+            <View style={styles.rowBetween}>
+              <Text style={styles.sectionTitle}>Recent review journal</Text>
+              <Text style={styles.greenStrong}>{homeHistory.length} saved</Text>
+            </View>
+            {(homeHistory.length ? homeHistory.slice(0, 4) : [
+              { id: "empty", ayahLabel: "No session marks yet", result: "Start a card session", timestamp: new Date().toISOString() }
+            ]).map((record) => (
+              <View key={record.id} style={styles.journalRow}>
+                <View style={[styles.journalDot, { backgroundColor: homeHistory.length ? resultColor(record.result) : colors.lineDark }]} />
+                <View style={styles.flex}>
+                  <Text style={styles.cardTitle}>{record.ayahLabel}</Text>
+                  <Text style={styles.cardSubtitle}>{homeHistory.length ? `${resultLabel(record.result)} · ${formatHistoryTime(record.timestamp)}` : "Your results will appear here automatically."}</Text>
+                </View>
+              </View>
+            ))}
           </Panel>
         </View>
       </ScrollView>
@@ -192,7 +234,21 @@ function HomeScreen({
   );
 }
 
-function ModeScreen({ state, safeTop, safeBottom, onNav, onStart }: { state: AppState; safeTop: number; safeBottom: number; onNav: (screen: Screen) => void; onStart: (mode: SessionMode, startIndex?: number, startAyah?: number) => void }) {
+function ModeScreen({
+  state,
+  safeTop,
+  safeBottom,
+  onNav,
+  onStart,
+  onCompleteSurah
+}: {
+  state: AppState;
+  safeTop: number;
+  safeBottom: number;
+  onNav: (screen: Screen) => void;
+  onStart: (mode: SessionMode, startIndex?: number, startAyah?: number) => void;
+  onCompleteSurah: (index: number) => void;
+}) {
   const [revisionDetailOpen, setRevisionDetailOpen] = useState(false);
   const newCount = buildNewDeck(state.newRange, state.arabicScript).length;
   const revisionDeck = buildRevisionDeck(state.revisionRanges, state.arabicScript, state.revisionOrder);
@@ -202,7 +258,6 @@ function ModeScreen({ state, safeTop, safeBottom, onNav, onStart }: { state: App
   const roundItems = revisionRoundItems(state);
   const remainingItems = remainingRevisionRoundItems(state);
   const startName = state.newRange.surah.split("\u00b7").slice(1).join("\u00b7").trim() || state.newRange.surah;
-  const pickMode = (state.revisionOrder ?? "forward") === "select";
   const continueIndex = remainingItems[0]?.index ?? Math.min(Math.max(0, state.revisionProgressIndex), Math.max(0, revisionDeck.length - 1));
   const continueAyah = remainingItems[0]?.startAyah ?? state.revisionProgressAyah ?? 1;
 
@@ -218,13 +273,13 @@ function ModeScreen({ state, safeTop, safeBottom, onNav, onStart }: { state: App
   if (revisionDetailOpen) {
     return (
       <ScrollView style={styles.fullScreen} contentContainerStyle={[styles.settingsContent, { paddingTop: safeTop + 8, paddingBottom: Math.max(110, safeBottom + 96) }]} showsVerticalScrollIndicator={false}>
-        <Header title={pickMode ? "Pick revision" : "Revision khatm"} onBack={() => setRevisionDetailOpen(false)} />
+        <Header title="Pick revision" onBack={() => setRevisionDetailOpen(false)} />
         <Panel>
           <View style={styles.rowBetween}>
             <View style={styles.flex}>
-              <Overline>Current khatm</Overline>
+              <Overline>Current revision cycle</Overline>
               <Text style={styles.cardTitle}>{revision.done} of {revision.total} ayat complete</Text>
-              <Text style={styles.cardSubtitle}>Khatm {revision.rounds + 1} - {revision.remaining} ayat left - target {revision.dailyTarget}/day</Text>
+              <Text style={styles.cardSubtitle}>Full khatm {revision.rounds + 1} - {revision.remaining} ayat left - target {revision.dailyTarget}/day</Text>
             </View>
             <View style={styles.todayRing}>
               <Text style={styles.todayRingValue}>{revision.pct}%</Text>
@@ -238,7 +293,7 @@ function ModeScreen({ state, safeTop, safeBottom, onNav, onStart }: { state: App
 
         <Panel>
           <View style={styles.rowBetween}>
-            <Text style={styles.sectionTitle}>Khatm record</Text>
+            <Text style={styles.sectionTitle}>Revision cycle record</Text>
             <Text style={styles.greenStrong}>{remainingItems.length} left</Text>
           </View>
           <ScrollView style={{ maxHeight: 360 }} nestedScrollEnabled showsVerticalScrollIndicator>
@@ -252,7 +307,7 @@ function ModeScreen({ state, safeTop, safeBottom, onNav, onStart }: { state: App
                   <View style={styles.flex}>
                     <Text style={styles.cardTitle}>{entry.flow.label}</Text>
                     <Text style={styles.cardSubtitle}>
-                      {completed ? "Completed this khatm" : current ? `Current - continue from ayah ${entry.startAyah}` : `Not started - ${entry.totalAyahs} ayat`}
+                      {completed ? "Completed in this cycle" : current ? `Current - continue from ayah ${entry.startAyah}` : `Not started - ${entry.totalAyahs} ayat`}
                     </Text>
                     <View style={styles.track}>
                       <View style={[styles.fill, { width: `${pct}%`, backgroundColor: completed ? colors.mint : colors.goldDark }]} />
@@ -264,27 +319,27 @@ function ModeScreen({ state, safeTop, safeBottom, onNav, onStart }: { state: App
           </ScrollView>
         </Panel>
 
-        {pickMode ? (
-          <Panel>
-            <Text style={styles.sectionTitle}>Choose unfinished surah</Text>
-            <Text style={styles.cardSubtitle}>Only sections left in this round are shown.</Text>
-            <View style={styles.revisionPickList}>
-              {remainingItems.map((entry) => (
-                <Pressable key={entry.flow.surah ?? entry.index} style={styles.revisionPickRow} onPress={() => startRevision(entry.index, entry.startAyah)}>
+        <Panel>
+          <Text style={styles.sectionTitle}>Choose unfinished surah</Text>
+          <Text style={styles.cardSubtitle}>Open any remaining surah, or mark small surahs complete from here.</Text>
+          <View style={styles.revisionPickList}>
+            {remainingItems.map((entry) => (
+              <View key={entry.flow.surah ?? entry.index} style={styles.revisionPickRow}>
+                <Pressable style={styles.revisionPickMain} onPress={() => startRevision(entry.index, entry.startAyah)}>
                   <Text style={styles.revisionPickBadge}>{entry.flow.surah}</Text>
                   <View style={styles.flex}>
                     <Text style={styles.revisionPickLabel}>{entry.flow.label}</Text>
                     <Text style={styles.cardSubtitle}>Start from ayah {entry.startAyah} - {entry.totalAyahs - entry.doneAyahs} left</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color={colors.faint} />
                 </Pressable>
-              ))}
-              {remainingItems.length === 0 && <Text style={styles.cardSubtitle}>Khatm complete. Start any revision session to begin the next khatm.</Text>}
-            </View>
-          </Panel>
-        ) : (
-          <PrimaryButton label={remainingItems.length ? `Continue revision - ayah ${continueAyah}` : "Start next revision round"} icon="arrow-forward" onPress={() => startRevision()} />
-        )}
+                <Pressable style={styles.revisionQuickDone} onPress={() => onCompleteSurah(entry.index)} hitSlop={8}>
+                  <Ionicons name="checkmark" size={18} color={colors.mintDark} />
+                </Pressable>
+              </View>
+            ))}
+            {remainingItems.length === 0 && <Text style={styles.cardSubtitle}>Full revision khatm complete. Start any revision session to begin the next khatm.</Text>}
+          </View>
+        </Panel>
       </ScrollView>
     );
   }
@@ -303,18 +358,18 @@ function ModeScreen({ state, safeTop, safeBottom, onNav, onStart }: { state: App
       <ModeCard
         icon="repeat-outline"
         title="Revision Flow Cards"
-        subtitle={pickMode ? `Pick from ${remainingItems.length} unfinished surah${remainingItems.length === 1 ? "" : "s"}` : `${revisionCount} surah${revisionCount === 1 ? "" : "s"} - ${revision.remaining} ayat left this round`}
-        quote="See your round record, then continue revision."
+        subtitle={`Pick from ${remainingItems.length || revisionCount} surah${(remainingItems.length || revisionCount) === 1 ? "" : "s"} - ${revision.remaining} ayat left in this full revision`}
+        quote="See your revision cycle, then continue from any surah."
         onPress={() => setRevisionDetailOpen(true)}
       />
       <Panel>
         <View style={styles.rowBetween}>
           <View style={styles.flex}>
-            <Overline>Revision khatm</Overline>
+            <Overline>Revision cycle</Overline>
             <Text style={styles.cardTitle}>{revision.pct}% complete</Text>
             <Text style={styles.cardSubtitle}>{revision.done}/{revision.total} ayat - {revision.remaining} left</Text>
           </View>
-          <Text style={styles.greenStrong}>Khatm {revision.rounds + 1}</Text>
+          <Text style={styles.greenStrong}>Full khatm {revision.rounds + 1}</Text>
         </View>
         <View style={styles.track}>
           <View style={[styles.fill, { width: `${revision.pct}%`, backgroundColor: colors.mint }]} />
@@ -369,6 +424,20 @@ function SessionScreen({
   const readAlreadyWeak = reading && !!state.results[`${currentSurahNumber}:${state.revisionReadAyah}`];
   const revisionEndAyah = isRev ? item.passage[item.passage.length - 1]?.num ?? item.start : 1;
   const revisionStartAyah = isRev ? Math.min(revisionEndAyah, Math.max(item.start, state.revisionResumeAyah || item.start)) : 1;
+  const actionBottom = safeBottom + (Platform.OS === "android" ? 28 : 34);
+  const actionHeight = !isRev ? (Platform.OS === "android" ? 56 : 64) : 54;
+  const cardBottom = actionBottom + actionHeight + (Platform.OS === "android" ? 26 : 34);
+  const memoSurahName = isRev ? "" : (item.surah?.split("·").slice(1).join("·").trim() || item.surah || "Al-Mulk");
+  const topTitle = isRev
+    ? "REVISION · RECITE FROM HERE"
+    : state.sessionMode === "weak"
+      ? "REPEAT · YOU SLIPPED HERE"
+      : "TODAY'S MEMORISATION";
+  const topSubtitle = isRev
+    ? `${item.label} · from āyah ${reading ? state.revisionReadAyah : revisionStartAyah}`
+    : `Sūrah ${memoSurahName} · āyah ${item.num}`;
+  // Push the card below the (safe-area-aware) top bar + progress + subtitle so they never overlap.
+  const cardTop = safeTop + (Platform.OS === "android" ? 80 : 86) + 28;
 
   const navigateMemoriseCard = (direction: 1 | -1) => {
     if (direction > 0) {
@@ -380,6 +449,16 @@ function SessionScreen({
       return;
     }
     onPatch({ cardIndex: Math.max(0, state.cardIndex - 1), revealed: false, revisionReadAyah: 0, revisionResumeAyah: 0 });
+  };
+
+  const navigateRevisionReadAyah = (direction: 1 | -1) => {
+    if (!isRevisionFlow(item) || !reading) return false;
+    const nextAyah = state.revisionReadAyah + direction;
+    const minAyah = item.passage[0]?.num ?? 1;
+    const maxAyah = item.passage[item.passage.length - 1]?.num ?? minAyah;
+    if (nextAyah < minAyah || nextAyah > maxAyah) return false;
+    onPatch({ revisionReadAyah: nextAyah, revisionResumeAyah: nextAyah, revisionProgressAyah: nextAyah });
+    return true;
   };
 
   // Warm the offline audio cache for memorisation/weak decks (small, fixed-size sessions).
@@ -411,7 +490,7 @@ function SessionScreen({
     translateX.setValue(0);
   }, [state.cardIndex, translateX]);
 
-  // Swipe navigates memorisation/weak cards; revision keeps swipes disabled because it has a flow UI.
+  // Swipe navigates memorisation/weak cards; in revision read mode it moves between nearby ayahs.
   const responder = useMemo(
     () =>
       PanResponder.create({
@@ -419,9 +498,13 @@ function SessionScreen({
         onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 14 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
         onPanResponderMove: (_, gesture) => translateX.setValue(gesture.dx),
         onPanResponderRelease: (_, gesture) => {
-          if (!isRev && Math.abs(gesture.dx) > 120) {
+          if ((!isRev || reading) && Math.abs(gesture.dx) > 120) {
             const direction = gesture.dx > 0 ? 1 : -1;
-            if (direction < 0 && state.cardIndex <= 0) {
+            if (!reading && direction < 0 && state.cardIndex <= 0) {
+              Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+              return;
+            }
+            if (reading && !navigateRevisionReadAyah(direction)) {
               Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
               return;
             }
@@ -429,17 +512,20 @@ function SessionScreen({
               toValue: gesture.dx > 0 ? 520 : -520,
               duration: 220,
               useNativeDriver: true
-            }).start(() => navigateMemoriseCard(direction));
+            }).start(() => {
+              if (reading) translateX.setValue(0);
+              else navigateMemoriseCard(direction);
+            });
           } else {
             Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
           }
         }
       }),
-    [isRev, navigateMemoriseCard, state.cardIndex, translateX]
+    [isRev, navigateMemoriseCard, navigateRevisionReadAyah, reading, state.cardIndex, translateX]
   );
 
   const confirmFinishedSurah = () => {
-    Alert.alert("Mark surah complete?", "This will count the current surah as finished for this revision round.", [
+    Alert.alert("Mark surah complete?", "This marks only this surah as complete inside the current revision cycle.", [
       { text: "Cancel", style: "cancel" },
       { text: "Finished", onPress: () => onMark("finished") }
     ]);
@@ -492,13 +578,14 @@ function SessionScreen({
     <View style={styles.sessionBg}>
       <View style={[styles.sessionTop, { paddingTop: safeTop + 12 }]}>
         <IconButton name="close" onPress={() => onNav("modes")} />
-        <Text style={styles.counterPill}>{state.cardIndex + 1} / {total}</Text>
+        <Text style={[styles.counterPill, styles.revisionTitlePill, state.sessionMode === "weak" && styles.weakTitlePill]} numberOfLines={1}>{topTitle}</Text>
         <IconButton name="settings-outline" onPress={() => onNav("notif")} />
       </View>
+      <Text style={styles.sessionSubtitle}>{topSubtitle}</Text>
       <View style={styles.sessionProgressTrack}>
         <LinearGradient colors={[colors.mint, "#6aa991"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.sessionProgress, { width: progress }]} />
       </View>
-      <View style={[styles.cardStack, !isRev && styles.memoriseCardStack]}>
+      <View style={[styles.cardStack, !isRev && styles.memoriseCardStack, { top: cardTop, bottom: cardBottom }]}>
         <View style={[styles.behindCard, styles.behindCardOne]} />
         <View style={[styles.behindCard, styles.behindCardTwo]} />
         <Animated.View
@@ -518,17 +605,8 @@ function SessionScreen({
             }
           ]}
         >
-          <Text style={[styles.modeChip, state.sessionMode === "weak" && styles.modeChipWarn]}>
-            {state.sessionMode === "new"
-              ? "RECITE FROM HERE"
-              : state.sessionMode === "weak"
-                ? "REPEAT · YOU SLIPPED HERE"
-                : reading
-                  ? "CARRY ON FROM HERE"
-                  : "REVISION · RECITE FROM MEMORY"}
-          </Text>
           {reading && readCard ? (
-            <AyahCard card={readCard} note="Practise this āyah, then continue the revision from here." arScale={arScale} />
+            <AyahCard card={readCard} note="Practise this āyah, then continue the revision from here." arScale={arScale} hideMeta />
           ) : isRev ? (
             <RevisionCard
               item={item}
@@ -538,9 +616,11 @@ function SessionScreen({
               onReveal={() => onPatch({ revealed: true })}
               arScale={arScale}
               onStuck={(ayah) => onStopAt(item.surah ?? 0, ayah)}
+              onMarkWeak={(ayah) => onAddWeak(item.surah ?? 0, ayah, item.label)}
+              isWeak={(ayah) => Boolean(state.results[`${item.surah ?? 0}:${ayah}`])}
             />
           ) : (
-            <AyahCard card={item} arScale={arScale} />
+            <AyahCard card={item} arScale={arScale} hideMeta />
           )}
           {(!isRev || reading) && (
             <Pressable style={styles.audioButton} onPress={() => playAyah(currentSurahNumber, currentAyahNumber, state.reciterId)}>
@@ -553,71 +633,80 @@ function SessionScreen({
         </Animated.View>
       </View>
       {!isRev ? (
-        <View style={[styles.markRow, { bottom: safeBottom + (Platform.OS === "android" ? 20 : 28) }]}>
-          <MarkButton label="Forgot" sub="show soon" color={colors.red} onPress={() => onMark("forgot")} />
-          <MarkButton label="Shaky" sub="review later" color={colors.goldDark} onPress={() => onMark("shaky")} />
-          <MarkButton label="Solid" sub="space it out" color="#fff" filled onPress={() => onMark("solid")} />
+        <View style={[styles.markRow, { bottom: actionBottom }]}>
+          <View style={styles.markRowInner}>
+            <MarkButton label="Forgot" sub="show soon" color={colors.red} onPress={() => onMark("forgot")} />
+            <MarkButton label="Shaky" sub="review later" color={colors.goldDark} onPress={() => onMark("shaky")} />
+            <MarkButton label="Solid" sub="space it out" color="#fff" filled onPress={() => onMark("solid")} />
+          </View>
         </View>
       ) : reading ? (
-        <View style={[styles.markRow, { bottom: safeBottom + (Platform.OS === "android" ? 20 : 28) }]}>
-          <PrimaryButton
-            label={readAlreadyWeak ? "In weak" : "Add to weak"}
-            icon={readAlreadyWeak ? undefined : "bookmark-outline"}
-            onPress={() => onAddWeak(currentSurahNumber, state.revisionReadAyah, isRevisionFlow(item) ? item.label : "")}
-            style={[readAlreadyWeak ? styles.weakActionDone : styles.weakActionButton, styles.readWeakButton]}
-            textColor={colors.green}
-          />
-          <PrimaryButton
-            label={`Continue from āyah ${state.revisionReadAyah}`}
-            icon="return-down-forward"
-            onPress={onResumeRevision}
-            style={styles.readContinueButton}
-          />
+        <View style={[styles.markRow, { bottom: actionBottom }]}>
+          <View style={styles.markRowInner}>
+            <PrimaryButton
+              label={readAlreadyWeak ? "In weak" : "Add to weak"}
+              icon={readAlreadyWeak ? undefined : "bookmark-outline"}
+              onPress={() => onAddWeak(currentSurahNumber, state.revisionReadAyah, isRevisionFlow(item) ? item.label : "")}
+              style={[readAlreadyWeak ? styles.weakActionDone : styles.weakActionButton, styles.readWeakButton]}
+              textColor={colors.green}
+            />
+            <PrimaryButton
+              label={`Continue from āyah ${state.revisionReadAyah}`}
+              icon="return-down-forward"
+              onPress={onResumeRevision}
+              style={styles.readContinueButton}
+            />
+          </View>
         </View>
       ) : !state.revealed ? (
-        <View style={[styles.markRow, { bottom: safeBottom + (Platform.OS === "android" ? 20 : 28) }]}>
-          <PrimaryButton label="I've recited · mark where I stopped" icon="arrow-down" onPress={() => onPatch({ revealed: true })} style={styles.flex} />
+        <View style={[styles.markRow, { bottom: actionBottom }]}>
+          <View style={styles.markRowInner}>
+            <PrimaryButton label="I've recited · mark where I stopped" icon="arrow-down" onPress={() => onPatch({ revealed: true })} style={styles.flex} />
+          </View>
         </View>
       ) : (
-        <View style={[styles.markRow, { bottom: safeBottom + (Platform.OS === "android" ? 20 : 28) }]}>
-          <PrimaryButton label="I reached the end · finished the sūrah" icon="checkmark" onPress={confirmFinishedSurah} style={styles.flex} />
+        <View style={[styles.markRow, { bottom: actionBottom }]}>
+          <View style={styles.markRowInner}>
+            <PrimaryButton label="Finish this sūrah" icon="checkmark" onPress={confirmFinishedSurah} style={styles.sessionPrimaryAction} />
+          </View>
         </View>
       )}
     </View>
   );
 }
 
-function ProgressScreen({ state, safeTop, onNav, onStart }: { state: AppState; safeTop: number; onNav: (screen: Screen) => void; onStart: (mode: SessionMode) => void }) {
+function ProgressScreen({ state, safeTop, onNav, onStart }: { state: AppState; safeTop: number; onNav: (screen: Screen) => void; onStart: (mode: SessionMode, startIndex?: number) => void }) {
   const progress = getProgressStats(state.reviewHistory);
   const dashboard = getDashboardStats(state);
   const revision = revisionTotals(state);
   const roundItems = revisionRoundItems(state);
-  const todayWeekIndex = (new Date().getDay() + 6) % 7;
+  const weakCards = buildWeakDeck(state.reviewHistory, state.arabicScript);
+  const month = monthConsistency(state.reviewHistory);
 
   return (
     <ScrollView style={styles.fullScreen} contentContainerStyle={styles.withTabsScroll} showsVerticalScrollIndicator={false}>
       <View style={[styles.content, { paddingTop: safeTop + 8 }]}>
         <Text style={styles.screenTitle}>Progress</Text>
         <Text style={styles.screenSub}>Memorising {state.newRange.surah}</Text>
-        <Panel style={styles.rowBetween}>
+        <Pressable style={[styles.panel, styles.rowBetween]} onPress={() => onNav("khatms")}>
           <View style={styles.flex}>
-            <Overline>Revision khatms</Overline>
+            <Overline>Completed full khatms</Overline>
             <Text style={styles.cardTitle}>{revision.rounds} complete {revision.rounds === 1 ? "khatm" : "khatms"}</Text>
-            <Text style={styles.cardSubtitle}>{revision.remaining} of {revision.total} āyāt left this khatm</Text>
+            <Text style={styles.cardSubtitle}>Tap to see all your past khatms ›</Text>
           </View>
           <View style={styles.todayRing}>
             <Text style={styles.todayRingValue}>{revision.rounds}</Text>
             <Text style={styles.todayRingLabel}>khatms</Text>
           </View>
-        </Panel>
+        </Pressable>
         <Panel>
           <ProgressLine label="Memorisation" value={`${dashboard.memorisedPercent}%`} pct={dashboard.memorisedPercent} color={colors.mint} />
-          <ProgressLine label="Revision khatm" value={`${revision.pct}%`} pct={revision.pct} color={colors.goldDark} />
-          <Text style={styles.cardSubtitle}>Khatm pace: {revision.dailyTarget} ayat/day · {revision.remainingToday} left today</Text>
+          <ProgressLine label="Current revision cycle" value={`${revision.pct}%`} pct={revision.pct} color={colors.goldDark} />
+          <Text style={styles.cardSubtitle}>Full khatm pace: {revision.dailyTarget} ayat/day · {revision.remainingToday} left today</Text>
         </Panel>
         <Panel>
           <View style={styles.rowBetween}>
-            <Text style={styles.sectionTitle}>Current khatm record</Text>
+            <Text style={styles.sectionTitle}>Current revision cycle</Text>
             <Text style={styles.greenStrong}>{revision.remaining} left</Text>
           </View>
           <ScrollView style={{ maxHeight: 300 }} nestedScrollEnabled showsVerticalScrollIndicator>
@@ -647,55 +736,38 @@ function ProgressScreen({ state, safeTop, onNav, onStart }: { state: AppState; s
         </View>
         <Panel>
           <View style={styles.rowBetween}>
-            <Text style={styles.sectionTitle}>Āyah map</Text>
-            <Text style={styles.cardSubtitle}>tap any to drill</Text>
+            <Text style={styles.sectionTitle}>Weak āyāt to drill</Text>
+            <Text style={styles.greenStrong}>{weakCards.length} marked</Text>
           </View>
-          <View style={styles.ayahMap}>
-            {progress.ayahMap.length ? progress.ayahMap.map(({ label, status }) => (
-              <Pressable key={label} style={[styles.ayahCell, ayahCellStyle(status)]} onPress={() => onStart(status === "solid" ? "revision" : "weak")}>
-                <Text style={[styles.ayahCellText, status === "empty" && { color: colors.faint }]}>{label}</Text>
-              </Pressable>
-            )) : <Text style={styles.cardSubtitle}>No card marks yet. Results will appear here after your first session.</Text>}
-          </View>
-          <Legend />
+          {weakCards.length ? (
+            <View style={styles.weakPillWrap}>
+              {weakCards.map((card, index) => (
+                <Pressable
+                  key={`${card.surah}:${card.num}`}
+                  style={styles.weakPill}
+                  onPress={() => onStart("weak", index)}
+                >
+                  <Text style={styles.weakPillText}>{surahNumberFromLabel(card.surah ?? "")}:{card.num}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.cardSubtitle}>Nothing flagged yet — āyāt you slip on during revision show up here to drill.</Text>
+          )}
         </Panel>
         <Panel>
           <View style={styles.rowBetween}>
-            <Text style={styles.sectionTitle}>Weak spots due</Text>
-            <Text style={styles.greenStrong}>{progress.weakSpots.length} ayat</Text>
+            <Text style={styles.sectionTitle}>{month.label}</Text>
+            <Text style={[styles.greenStrong, { color: month.color }]}>{month.active} / {month.days} days</Text>
           </View>
-          <View style={styles.weakSpotList}>
-            {progress.weakSpots.slice(0, 4).map((spot) => (
-              <Pressable key={spot.ayahId} style={styles.weakSpotRow} onPress={() => onStart("weak")}>
-                <View style={styles.weakSpotBadge}>
-                  <Text style={styles.weakSpotBadgeText}>{spot.card.ayahNumber}</Text>
-                </View>
-                <View style={styles.flex}>
-                  <Arabic style={styles.weakSpotArabic}>{spot.card.prompt}</Arabic>
-                  <Text style={styles.cardSubtitle}>Next due {formatDueDate(spot.nextDueAt)}</Text>
-                </View>
-                <View style={styles.weakScore}>
-                  <Text style={styles.weakScoreValue}>{spot.weaknessScore}</Text>
-                  <Text style={styles.pointsLabel}>risk</Text>
-                </View>
-              </Pressable>
-            ))}
-            {progress.weakSpots.length === 0 && <Text style={styles.cardSubtitle}>No weak spots marked yet.</Text>}
-          </View>
-        </Panel>
-        <Panel>
-          <View style={styles.rowBetween}>
-            <Text style={styles.sectionTitle}>Weekly consistency</Text>
-            <Text style={styles.greenStrong}>{dashboard.weeklyCompletedDays} / 7 days</Text>
-          </View>
-          <View style={styles.calendarGrid}>
-            {dashboard.weeklyDays.map((done, index) => (
+          <View style={styles.monthStrip}>
+            {Array.from({ length: month.days }, (_, i) => i + 1).map((day) => (
               <View
-                key={index}
+                key={day}
                 style={[
-                  styles.calendarDay,
-                  { backgroundColor: done ? colors.mint : colors.line },
-                  index === todayWeekIndex && styles.todayOutline
+                  styles.monthStripBar,
+                  { backgroundColor: month.activeDays.has(day) ? colors.mint : colors.line },
+                  day === month.today && styles.monthStripToday
                 ]}
               />
             ))}
@@ -703,6 +775,94 @@ function ProgressScreen({ state, safeTop, onNav, onStart }: { state: AppState; s
         </Panel>
         <PrimaryButton label="See weekly recap" icon="arrow-forward" onPress={() => onNav("recap")} />
       </View>
+    </ScrollView>
+  );
+}
+
+function KhatmsScreen({ state, safeTop, onNav, onStart }: { state: AppState; safeTop: number; onNav: (screen: Screen) => void; onStart: (mode: SessionMode, startIndex?: number) => void }) {
+  const khatms = state.khatms ?? [];
+  const [openKhatmId, setOpenKhatmId] = useState(khatms[0]?.id ?? "");
+  const totals = revisionTotals(state);
+  const khatm = currentKhatmStats(state);
+  const currentWeak = khatm.weakAyahs;
+  const curWeakPct = khatm.weakPct;
+  const curStrongPct = khatm.strongPct;
+  const curRemainPct = khatm.remainPct;
+  const weakDeck = buildWeakDeck(state.reviewHistory, state.arabicScript);
+  const openWeak = (surah: number, ayah: number) => {
+    const idx = weakDeck.findIndex((card) => surahNumberFromLabel(card.surah ?? "") === surah && card.num === ayah);
+    if (idx >= 0) onStart("weak", idx);
+  };
+  return (
+    <ScrollView style={styles.fullScreen} contentContainerStyle={[styles.settingsContent, { paddingTop: safeTop + 8 }]} showsVerticalScrollIndicator={false}>
+      <Header title="Revision khatms" onBack={() => onNav("progress")} />
+      <Text style={styles.cardSubtitle}>Every time you complete the full revision cycle for what you know, it is saved here as a khatm. The bar shows how solid that khatm was — green is clean, red is āyāt you slipped on.</Text>
+      <Panel style={[styles.khatmCard, styles.khatmCurrent]}>
+        <View style={styles.rowBetween}>
+          <Text style={styles.cardTitle}>Current khatm · in progress</Text>
+          <Text style={[styles.greenStrong, { color: colors.gold }]}>{totals.pct}%</Text>
+        </View>
+        <View style={styles.khatmBar}>
+          <View style={{ width: `${curStrongPct}%`, backgroundColor: colors.mint }} />
+          <View style={{ width: `${curWeakPct}%`, backgroundColor: curWeakPct > 25 ? colors.red : colors.goldDark }} />
+          <View style={{ width: `${curRemainPct}%`, backgroundColor: colors.line }} />
+        </View>
+        <Text style={styles.khatmMeta}>{totals.done} of {totals.total} āyāt · {currentWeak.length} weak so far</Text>
+        {currentWeak.length > 0 && (
+          <View style={styles.khatmWeakList}>
+            {currentWeak.map((a) => (
+              <Pressable key={`cur-${a.surah}:${a.ayah}`} style={styles.khatmWeakChip} onPress={() => openWeak(a.surah, a.ayah)}>
+                <Text style={styles.khatmWeakText}>{a.surah}:{a.ayah}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+      </Panel>
+      <Overline style={styles.spacedOverline}>Completed khatms</Overline>
+      {khatms.length === 0 ? (
+        <Panel style={styles.khatmEmpty}>
+          <Ionicons name="ribbon-outline" size={26} color={colors.mint} />
+          <Text style={styles.cardTitle}>No khatms yet</Text>
+          <Text style={styles.cardSubtitle}>Finish a full revision cycle and it'll appear here.</Text>
+        </Panel>
+      ) : (
+        khatms.map((khatm, index) => {
+          const weakPct = khatm.total ? Math.min(100, Math.round((khatm.weak / khatm.total) * 100)) : 0;
+          const strongPct = 100 - weakPct;
+          const expanded = openKhatmId === khatm.id;
+          return (
+            <Pressable
+              key={khatm.id}
+              style={[styles.panel, styles.khatmCard]}
+              onPress={() => setOpenKhatmId(expanded ? "" : khatm.id)}
+            >
+              <View style={styles.rowBetween}>
+                <Text style={styles.cardTitle}>Khatm #{khatms.length - index}</Text>
+                <Text style={styles.cardSubtitle}>{expanded ? "Hide weak āyāt" : "Show weak āyāt"}</Text>
+              </View>
+              <Text style={styles.cardSubtitle}>{formatHistoryTime(khatm.completedAt)}</Text>
+              <View style={styles.khatmBar}>
+                <View style={{ width: `${strongPct}%`, backgroundColor: colors.mint }} />
+                <View style={{ width: `${weakPct}%`, backgroundColor: weakPct > 25 ? colors.red : colors.goldDark }} />
+              </View>
+              <Text style={styles.khatmMeta}>{khatm.total} āyāt revised · {khatm.weak} weak ({weakPct}%)</Text>
+              {expanded && (
+                <View style={styles.khatmWeakList}>
+                  {khatm.weakAyahs?.length ? (
+                    khatm.weakAyahs.map((ayah) => (
+                      <Pressable key={`${khatm.id}-${ayah.surah}:${ayah.ayah}`} style={styles.khatmWeakChip} onPress={() => openWeak(ayah.surah, ayah.ayah)}>
+                        <Text style={styles.khatmWeakText}>{ayah.surah}:{ayah.ayah}</Text>
+                      </Pressable>
+                    ))
+                  ) : (
+                    <Text style={styles.cardSubtitle}>No weak āyāt were recorded for this khatm.</Text>
+                  )}
+                </View>
+              )}
+            </Pressable>
+          );
+        })
+      )}
     </ScrollView>
   );
 }
@@ -715,7 +875,18 @@ function BoardScreen({ state, safeTop, onPatch }: { state: AppState; safeTop: nu
     <ScrollView style={styles.fullScreen} contentContainerStyle={styles.withTabsScroll} showsVerticalScrollIndicator={false}>
       <View style={[styles.content, { paddingTop: safeTop + 8 }]}>
         <Text style={styles.screenTitle}>Circle</Text>
-        <Text style={styles.screenSub}>Ranked by effort and consistency, not how much you know.</Text>
+        <LinearGradient colors={[colors.green2, "#0c3128"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.comingSoonHero}>
+          <View style={styles.comingSoonBadge}>
+            <Text style={styles.comingSoonBadgeText}>COMING SOON</Text>
+          </View>
+          <Ionicons name="people" size={34} color={colors.gold} style={{ marginTop: 14 }} />
+          <Text style={styles.comingSoonTitle}>Compete in good deeds with friends & family</Text>
+          <Text style={styles.comingSoonBody}>
+            Soon you'll be able to revise together — gentle leaderboards ranked by effort and consistency, group khatms, and
+            encouragement, never by how much you know.
+          </Text>
+        </LinearGradient>
+        <Overline style={styles.spacedOverline}>A sneak peek</Overline>
         <Segmented
           values={["friends", "class"]}
           labels={["Friends", "My Class"]}
@@ -787,41 +958,46 @@ function RecapScreen({ state, safeTop, onNav }: { state: AppState; safeTop: numb
         <Text style={styles.recapHeaderText}>Weekly recap</Text>
         <View style={{ width: 38 }} />
       </View>
-      <Panel ref={cardRef} style={styles.shareCard}>
-        <View style={styles.rowBetween}>
-          <Overline>{weekLabel}</Overline>
-          <View style={styles.miniLogo}>
-            <Text style={styles.miniLogoText}>ﷺ</Text>
+      <View ref={cardRef} collapsable={false} style={styles.recapShareArea}>
+        <Panel style={styles.shareCard}>
+          <View style={styles.rowBetween}>
+            <Overline>{weekLabel}</Overline>
+            <View style={styles.miniLogo}>
+              <Text style={styles.miniLogoText}>ﷺ</Text>
+            </View>
           </View>
-        </View>
-        <Text style={styles.bigNumber}>{recap.cardsTested}</Text>
-        <Text style={styles.shareSub}>cards reviewed this week</Text>
-        <Divider />
-        {[
-          ["barbell-outline", "Strongest range:", recap.strongestRange],
-          ["radio-button-on-outline", "Weakest:", recap.weakestRange],
-          ["trending-up-outline", "Improved:", recap.improved],
-          ["flame-outline", "Streak:", recap.streakMaintained ? "maintained all 7 days" : "ready to rebuild"]
-        ].map(([icon, lead, text]) => (
-          <View key={lead} style={styles.insightRow}>
-            <Ionicons name={icon as never} size={18} color={colors.mint} />
-            <Text style={styles.insightText}>
-              <Text style={styles.bold}>{lead} </Text>
-              {text}
-            </Text>
+          <Text style={styles.bigNumber}>{recap.cardsTested}</Text>
+          <Text style={styles.shareSub}>cards reviewed this week</Text>
+          <Divider />
+          {[
+            ["radio-button-on-outline", "Weakest:", recap.weakestRange],
+            ["trending-up-outline", "Improved:", recap.improved],
+            ["flame-outline", "Streak:", recap.streakMaintained ? "maintained all 7 days" : "ready to rebuild"]
+          ].map(([icon, lead, text]) => (
+            <View key={lead} style={styles.insightRow}>
+              <Ionicons name={icon as never} size={18} color={colors.mint} />
+              <Text style={styles.insightText}>
+                <Text style={styles.bold}>{lead} </Text>
+                {text}
+              </Text>
+            </View>
+          ))}
+          <View style={styles.recapAyah}>
+            <Arabic style={styles.recapAyahText}>فَٱذْكُرُونِىٓ أَذْكُرْكُمْ</Arabic>
+            <Text style={styles.darkQuoteText}>“So remember Me; I will remember you.” · 2:152</Text>
           </View>
-        ))}
-        <View style={styles.recapAyah}>
-          <Arabic style={styles.recapAyahText}>فَٱذْكُرُونِىٓ أَذْكُرْكُمْ</Arabic>
-          <Text style={styles.darkQuoteText}>“So remember Me; I will remember you.” · 2:152</Text>
+        </Panel>
+        <View style={styles.recapStats}>
+          <RecapStat value={String(recap.ayahsRevised)} label="āyāt revised" />
+          <RecapStat value={`+${recap.newMemorised}`} label="new memorised" />
+          <RecapStat value={String(recap.effortPoints)} label="effort pts" />
         </View>
-      </Panel>
-      <PrimaryButton label="Share recap card" icon="share-outline" onPress={shareRecap} style={{ backgroundColor: colors.gold }} textColor={colors.green} />
-      <View style={styles.recapStats}>
-        <RecapStat value={String(recap.ayahsRevised)} label="āyāt revised" />
-        <RecapStat value={`+${recap.newMemorised}`} label="new memorised" />
-        <RecapStat value={String(recap.effortPoints)} label="effort pts" />
       </View>
+      <PrimaryButton label="Share recap card" icon="share-outline" onPress={shareRecap} style={{ backgroundColor: colors.gold }} textColor={colors.green} />
+      <Text style={styles.effortNote}>
+        Effort points reward showing up: you earn points for each card you review and each day you keep your streak — it's about
+        consistency, not how much you already know.
+      </Text>
     </ScrollView>
   );
 }
@@ -838,7 +1014,6 @@ function ProfileScreen({
   onNav: (screen: Screen) => void;
 }) {
   const dashboard = getDashboardStats(state);
-  const progress = getProgressStats(state.reviewHistory);
   const history = state.reviewHistory ?? [];
   const communityLabel = state.communityMode === "class" ? "Class circle" : state.communityMode === "friends" ? "Friends circle" : "Private mode";
   const selectedReciter = reciterById(state.reciterId);
@@ -875,31 +1050,13 @@ function ProfileScreen({
         </View>
       </LinearGradient>
       <View style={styles.content}>
-        <Overline>Current goal</Overline>
-        <Panel style={styles.goalPanel}>
-          <View>
-            <Text style={styles.cardTitle}>Finish {dashboard.currentSurah}</Text>
-            <Text style={styles.cardSubtitle}>{dashboard.securedCount} of {dashboard.totalInRange} āyāt secured · {progress.weakSpots.length} weak due</Text>
-          </View>
-          <Arabic style={styles.goalArabic}>{dashboard.currentArabic}</Arabic>
-        </Panel>
-        <Panel>
-          <View style={styles.rowBetween}>
-            <Text style={styles.sectionTitle}>Recent review journal</Text>
-            <Text style={styles.greenStrong}>{history.length} saved</Text>
-          </View>
-          {(history.length ? history.slice(0, 4) : [
-            { id: "empty", ayahLabel: "No session marks yet", result: "Start a card session", timestamp: new Date().toISOString() }
-          ]).map((record) => (
-            <View key={record.id} style={styles.journalRow}>
-              <View style={[styles.journalDot, { backgroundColor: history.length ? resultColor(record.result) : colors.lineDark }]} />
-              <View style={styles.flex}>
-                <Text style={styles.cardTitle}>{record.ayahLabel}</Text>
-                <Text style={styles.cardSubtitle}>{history.length ? `${resultLabel(record.result)} · ${formatHistoryTime(record.timestamp)}` : "Your results will appear here automatically."}</Text>
-              </View>
-            </View>
-          ))}
-        </Panel>
+        <Overline>Display</Overline>
+        <ArabicDisplayCard
+          script={state.arabicScript ?? "uthmani"}
+          size={state.arabicSize ?? "medium"}
+          onScript={(arabicScript) => onPatch({ arabicScript })}
+          onSize={(arabicSize) => onPatch({ arabicSize })}
+        />
         <Overline style={styles.spacedOverline}>Settings</Overline>
         <Panel style={styles.reciterPanel}>
           <Pressable style={styles.settingRowInner} onPress={() => setReciterDropdownOpen((open) => !open)}>
@@ -935,24 +1092,31 @@ function ProfileScreen({
             </View>
           )}
         </Panel>
-        <Panel style={styles.listPanel}>
-          <SettingsRow icon="notifications-outline" label="Reminder preferences" meta={`${state.notificationsScheduled} scheduled`} onPress={() => onNav("notif")} />
-          <Divider />
-          <SettingsRow icon="repeat-outline" label="Revision plan" meta={`${state.revisionRoundDays} day khatm`} onPress={() => onNav("notif")} />
-          <Divider />
-          <SettingsRow icon="people-outline" label="Friends & classes" meta={communityLabel} onPress={() => onNav("board")} />
-          <Divider />
-          <SettingsRow icon="refresh-outline" label="Restart onboarding" meta="review setup" onPress={restartOnboarding} />
-        </Panel>
-        <Panel style={styles.listPanel}>
-          <SettingsRow icon="trash-outline" label="Clear review journal" meta={`${history.length} marks saved`} onPress={clearHistory} />
-        </Panel>
+        <View style={styles.profileActionRow}>
+          <Pressable style={styles.profileActionTile} onPress={() => onNav("board")}>
+            <View style={styles.profileActionIcon}>
+              <Ionicons name="people-outline" size={20} color={colors.mint} />
+            </View>
+            <Text style={styles.profileActionLabel}>Friends & classes</Text>
+          </Pressable>
+          <Pressable style={styles.profileActionTile} onPress={restartOnboarding}>
+            <View style={styles.profileActionIcon}>
+              <Ionicons name="refresh-outline" size={20} color={colors.mint} />
+            </View>
+            <Text style={styles.profileActionLabel}>Restart setup</Text>
+          </Pressable>
+          <Pressable style={[styles.profileActionTile, styles.profileActionDanger]} onPress={clearHistory}>
+            <View style={[styles.profileActionIcon, styles.profileActionIconDanger]}>
+              <Ionicons name="trash-outline" size={20} color={colors.red} />
+            </View>
+            <Text style={[styles.profileActionLabel, { color: colors.red }]}>Clear journal</Text>
+          </Pressable>
+        </View>
         <Panel style={styles.premium}>
           <Text style={styles.premiumMark}>ﷺ</Text>
-          <Text style={styles.premiumChip}>REVISION PLAN</Text>
-          <Text style={styles.premiumTitle}>Tune your reminders</Text>
-          <Text style={styles.premiumBody}>Adjust active hours, new memorisation nudges, revision days, and your khatm completion goal from one calm control surface.</Text>
-          <PrimaryButton label="Open reminder plan" onPress={() => onNav("notif")} style={{ backgroundColor: colors.gold }} textColor={colors.green} />
+          <Text style={styles.premiumTitle}>Change Current Plan</Text>
+          <Text style={styles.premiumBody}>Adjust active hours, new memorisation nudges, revision order and days, and your khatm pace — all in one place.</Text>
+          <PrimaryButton label="Open plan settings" onPress={() => onNav("notif")} style={{ backgroundColor: colors.gold }} textColor={colors.green} />
         </Panel>
       </View>
     </ScrollView>

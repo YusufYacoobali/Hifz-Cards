@@ -1,7 +1,8 @@
 import { buildRevisionDeck } from "./deck";
 import { RevisionFlow } from "./data";
 import { allSurahs, SurahInfo } from "./surahs";
-import { AppState, Days, MemorisationRange, SurahRange } from "./types";
+import { colors } from "./theme";
+import { AppState, Days, MemorisationRange, ReviewRecord, SurahRange } from "./types";
 
 export function surahLabel(surah: SurahInfo) {
   return `${surah.number} · ${surah.english}`;
@@ -146,7 +147,7 @@ export function revisionRoundItems(state: AppState): RevisionRoundItem[] {
   return deck.map((flow, index) => {
     const totalAyahs = flow.passage.length;
     const key = String(flow.surah ?? index);
-    const isCompleted = completed[key] || (state.revisionOrder !== "select" && index < idx);
+    const isCompleted = Boolean(completed[key]);
     const rawStart = index === idx ? state.revisionProgressAyah || 1 : 1;
     const startAyah = Math.min(totalAyahs, Math.max(1, rawStart));
     const doneAyahs = isCompleted ? totalAyahs : index === idx ? Math.max(0, startAyah - 1) : 0;
@@ -179,8 +180,43 @@ export function revisionTotals(state: AppState) {
   };
 }
 
+// Live stats for the khatm currently in progress, including weak āyāt flagged since the last khatm.
+export function currentKhatmStats(state: AppState) {
+  const totals = revisionTotals(state);
+  const since = state.khatms?.[0] ? new Date(state.khatms[0].completedAt).getTime() : 0;
+  const weakAyahs: Array<{ surah: number; ayah: number }> = [];
+  const seen = new Set<string>();
+  (state.reviewHistory ?? []).forEach((r) => {
+    const isWeak = r.result === "shaky" || r.result === "forgot" || String(r.result).startsWith("stuck@");
+    if (!isWeak || !r.surah || !r.ayah || new Date(r.timestamp).getTime() < since) return;
+    const k = `${r.surah}:${r.ayah}`;
+    if (seen.has(k)) return;
+    seen.add(k);
+    weakAyahs.push({ surah: r.surah, ayah: r.ayah });
+  });
+  const weakPct = totals.total ? Math.round((weakAyahs.length / totals.total) * 100) : 0;
+  const strongPct = totals.total ? Math.max(0, Math.round((totals.done / totals.total) * 100) - weakPct) : 0;
+  const remainPct = Math.max(0, 100 - strongPct - weakPct);
+  return { ...totals, weakAyahs, weakPct, strongPct, remainPct };
+}
+
 export function activeDayCount(days: Days) {
   return (Object.values(days) as boolean[]).filter(Boolean).length;
+}
+
+// Which calendar days of the current month the user was active, with an overall colour rating.
+export function monthConsistency(history: ReviewRecord[] = []) {
+  const now = new Date();
+  const days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const activeDays = new Set<number>();
+  history.forEach((record) => {
+    const date = new Date(record.timestamp);
+    if (date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth()) activeDays.add(date.getDate());
+  });
+  const active = activeDays.size;
+  const ratio = active / days;
+  const color = ratio >= 0.6 ? colors.mint : ratio >= 0.3 ? colors.goldDark : colors.red;
+  return { days, active, activeDays, today: now.getDate(), label: now.toLocaleDateString("en-GB", { month: "long" }), color };
 }
 
 export function rangeAyahCount(range: SurahRange) {
