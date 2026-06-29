@@ -88,7 +88,7 @@ export function ayahLabel(ayahId: string) {
 function getAllAttempts(history: ReviewRecord[] = []) {
   const liveAttempts: ReviewAttempt[] = history.map((entry) => ({
     ayahId: `${entry.surah ?? 67}:${entry.ayah ?? extractAyahNumber(entry.ayahLabel)}`,
-    mode: entry.mode,
+    mode: normalizeMode(entry.mode),
     result: normalizeResult(entry.result),
     timestamp: entry.timestamp,
     mistakeType: mistakeFromResult(entry.result),
@@ -96,6 +96,12 @@ function getAllAttempts(history: ReviewRecord[] = []) {
   }));
 
   return liveAttempts;
+}
+
+function normalizeMode(mode: ReviewRecord["mode"]): ReviewMode {
+  if (mode === "yesterdayWeak") return "weak";
+  if (mode === "recent") return "revision";
+  return mode;
 }
 
 function extractAyahNumber(label: string) {

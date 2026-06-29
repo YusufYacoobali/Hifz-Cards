@@ -6,6 +6,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
+  DimensionValue,
   PanResponder,
   Platform,
   Pressable,
@@ -16,7 +17,7 @@ import {
 } from "react-native";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { buildDeckContext } from "./src/appStateSelectors";
-import { ayahCard, ayahCellStyle, buildNewDeck, buildRevisionDeck, buildWeakDeck, getDeck, isRevisionFlow, sessionProgressWidth } from "./src/deck";
+import { ayahCard, ayahCellStyle, buildNewDeck, buildRecentRevisionDeck, buildRevisionDeck, buildWeakDeck, buildYesterdayWeakDeck, getDeck, isRevisionFlow, sessionProgressWidth } from "./src/deck";
 import { HifzCard } from "./src/data";
 import {
   getDashboardStats,
@@ -29,12 +30,12 @@ import * as Sharing from "expo-sharing";
 import { captureRef } from "react-native-view-shot";
 import { playAyah, prefetchAyat, stopAyah } from "./src/audio";
 import { reciterById, reciters } from "./src/reciters";
-import { currentKhatmStats, monthConsistency, remainingRevisionRoundItems, revisionRoundItems, revisionTotals, surahNumberFromLabel } from "./src/planning";
+import { currentKhatmStats, makeSurahRange, monthConsistency, remainingRevisionRoundItems, revisionRoundItems, revisionTotals, surahNumberFromLabel } from "./src/planning";
 import { colors } from "./src/theme";
 import { styles } from "./src/styles";
 import { NewOnboardingScreen } from "./src/screens/NewOnboardingScreen";
 import { NotificationsScreen } from "./src/screens/NotificationsScreen";
-import { Arabic, ArabicDisplayCard, ArabicFontContext, AyahCard, BottomTabs, Divider, Header, HeroHeader, IconButton, Legend, MarkButton, ModeCard, OutlineButton, Overline, Panel, Podium, PrimaryButton, ProfileStat, ProgressLine, RecapStat, ResultBox, RevisionCard, Segmented, SettingsRow, StatCard, formatDueDate, formatHistoryTime, resultColor, resultLabel, tabBarHeight } from "./src/components";
+import { Arabic, ArabicDisplayCard, ArabicFontContext, AyahCard, BottomTabs, Divider, Header, HeroHeader, IconButton, KnownSurahRangeCard, Legend, MarkButton, ModeCard, OutlineButton, Overline, Panel, Podium, PrimaryButton, ProfileStat, ProgressLine, RecapStat, ResultBox, RevisionCard, Segmented, SettingsRow, StatCard, formatDueDate, formatHistoryTime, resultColor, resultLabel, tabBarHeight } from "./src/components";
 import { AppState, arabicSizeScale, ResultStatus, Screen, SessionMode } from "./src/types";
 
 export default function App() {
@@ -51,7 +52,7 @@ export default function App() {
 }
 
 function AppContent() {
-  const { state, showTabs, patch, nav, beginApp, startSession, markCard, completeRevisionSurah, stopAtAyah, addReadWeak, resumeRevision } = useHifzAppState();
+  const { state, showTabs, patch, nav, beginApp, startSession, startQuiz, markQuiz, resetQuiz, markCard, completeRevisionSurah, stopAtAyah, addReadWeak, resumeRevision } = useHifzAppState();
   const insets = useSafeAreaInsets();
   const safe = {
     top: Math.max(insets.top, Platform.OS === "ios" ? 44 : 0),
@@ -72,9 +73,11 @@ function AppContent() {
               onComplete={beginApp}
             />
           )}
-          {state.screen === "home" && <HomeScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onNav={nav} onModes={() => nav("modes")} />}
+          {state.screen === "home" && <HomeScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onNav={nav} onModes={() => nav("modes")} onQuiz={() => nav("quizSetup")} />}
           {state.screen === "notif" && <NotificationsScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onPatch={patch} onNav={nav} />}
           {state.screen === "modes" && <ModeScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onNav={nav} onStart={startSession} onCompleteSurah={completeRevisionSurah} />}
+          {state.screen === "quizSetup" && <QuizSetupScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onPatch={patch} onNav={nav} onStart={startQuiz} />}
+          {state.screen === "quizSession" && <QuizSessionScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onPatch={patch} onMark={markQuiz} onExit={resetQuiz} />}
           {state.screen === "session" && (
             <SessionScreen
               state={state}
@@ -106,13 +109,15 @@ function HomeScreen({
   safeTop,
   safeBottom,
   onNav,
-  onModes
+  onModes,
+  onQuiz
 }: {
   state: AppState;
   safeTop: number;
   safeBottom: number;
   onNav: (screen: Screen) => void;
   onModes: () => void;
+  onQuiz: () => void;
 }) {
   const dashboard = getDashboardStats(state);
   const revision = revisionTotals(state);
@@ -200,6 +205,19 @@ function HomeScreen({
               </View>
             </Pressable>
           )}
+          <Pressable style={[styles.panel, styles.quizHomeCard]} onPress={onQuiz}>
+            <View style={styles.settingRowInner}>
+              <View style={styles.iconTile}>
+                <Ionicons name="help-buoy-outline" size={20} color={colors.mint} />
+              </View>
+              <View style={styles.flex}>
+                <Overline>Quiz mode</Overline>
+                <Text style={styles.cardTitle}>Random continuation test</Text>
+                <Text style={styles.cardSubtitle}>Get a random āyah from your revision, then recite the next 5 āyāt. Results stay private to this quiz.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.faint} />
+            </View>
+          </Pressable>
           <Panel style={styles.notificationSummary}>
             <View style={styles.flex}>
               <Overline>Reminders today</Overline>
@@ -253,6 +271,8 @@ function ModeScreen({
   const newCount = buildNewDeck(state.newRange, state.arabicScript).length;
   const revisionDeck = buildRevisionDeck(state.revisionRanges, state.arabicScript, state.revisionOrder);
   const weakCount = buildWeakDeck(state.reviewHistory, state.arabicScript).length;
+  const yesterdayWeakCount = buildYesterdayWeakDeck(state.reviewHistory, state.arabicScript).length;
+  const recentCount = buildRecentRevisionDeck(state.reviewHistory, state.newRange, state.arabicScript).length;
   const revisionCount = revisionDeck.length;
   const revision = revisionTotals(state);
   const roundItems = revisionRoundItems(state);
@@ -261,7 +281,16 @@ function ModeScreen({
   const continueIndex = remainingItems[0]?.index ?? Math.min(Math.max(0, state.revisionProgressIndex), Math.max(0, revisionDeck.length - 1));
   const continueAyah = remainingItems[0]?.startAyah ?? state.revisionProgressAyah ?? 1;
 
-  const startRevision = (index = continueIndex, ayah = continueAyah) => onStart("revision", index, ayah);
+  const startRevision = (index = continueIndex, ayah = continueAyah) => {
+    if (!yesterdayWeakCount) {
+      onStart("revision", index, ayah);
+      return;
+    }
+    Alert.alert("Review yesterday's weak cards first?", `You have ${yesterdayWeakCount} weak āyah${yesterdayWeakCount === 1 ? "" : "s"} from yesterday. Warm those up before continuing revision?`, [
+      { text: "Skip", style: "cancel", onPress: () => onStart("revision", index, ayah) },
+      { text: "Review weak", onPress: () => onStart("yesterdayWeak") }
+    ]);
+  };
   const startWeak = () => {
     if (!weakCount) {
       Alert.alert("No weak cards yet", "Mark an ayah as shaky, forgotten, or stuck during a session and it will appear here.");
@@ -362,6 +391,13 @@ function ModeScreen({
         quote="See your revision cycle, then continue from any surah."
         onPress={() => setRevisionDetailOpen(true)}
       />
+      <ModeCard
+        icon="shield-checkmark-outline"
+        title="Recent Sūrah Solidifier"
+        subtitle={`Revise the ${recentCount || 3} most recent learnt sūrah${(recentCount || 3) === 1 ? "" : "s"} end-to-end`}
+        quote="A focused pass over fresh memorisation before it has time to fade."
+        onPress={() => onStart("recent")}
+      />
       <Panel>
         <View style={styles.rowBetween}>
           <View style={styles.flex}>
@@ -384,6 +420,206 @@ function ModeScreen({
         onPress={startWeak}
       />
     </ScrollView>
+  );
+}
+
+function QuizSetupScreen({
+  state,
+  safeTop,
+  safeBottom,
+  onPatch,
+  onNav,
+  onStart
+}: {
+  state: AppState;
+  safeTop: number;
+  safeBottom: number;
+  onPatch: (next: Partial<AppState>) => void;
+  onNav: (screen: Screen) => void;
+  onStart: () => void;
+}) {
+  const quizRange = state.quizRange ?? state.revisionRanges[0];
+  const revisionSummary = state.revisionRanges.map((range) => range.label).join(" · ");
+  const updateQuizRange = (fromSurah: number, toSurah: number) => {
+    onPatch({ quizRange: makeSurahRange(fromSurah, toSurah, quizRange?.id ?? "quiz-custom") });
+  };
+
+  return (
+    <ScrollView style={styles.fullScreen} contentContainerStyle={[styles.settingsContent, { paddingTop: safeTop + 8, paddingBottom: Math.max(110, safeBottom + 96) }]} showsVerticalScrollIndicator={false}>
+      <Header title="Quiz mode" onBack={() => onNav("home")} />
+      <Panel style={styles.quizIntroCard}>
+        <View style={styles.settingRowInner}>
+          <View style={styles.iconTile}>
+            <Ionicons name="shuffle-outline" size={21} color={colors.mint} />
+          </View>
+          <View style={styles.flex}>
+            <Overline>Random continuation test</Overline>
+            <Text style={styles.cardTitle}>Start from any known āyah</Text>
+            <Text style={styles.cardSubtitle}>Each question gives you one starting āyah. Recite from there for the next 5 āyāt, then mark how clean it felt. Nothing here is saved to your normal progress.</Text>
+          </View>
+        </View>
+      </Panel>
+
+      <Panel>
+        <Text style={styles.sectionTitle}>Questions</Text>
+        <Text style={styles.cardSubtitle}>Choose a short drill or a deeper spot-check.</Text>
+        <Segmented
+          values={["5", "10", "15", "20"]}
+          labels={["5", "10", "15", "20"]}
+          active={String(state.quizQuestionCount || 5)}
+          onChange={(value) => onPatch({ quizQuestionCount: Number(value) })}
+        />
+      </Panel>
+
+      <Panel>
+        <Text style={styles.sectionTitle}>Prompt style</Text>
+        <Text style={styles.cardSubtitle}>Text shows the āyah on the card. Audio-only hides the text and asks you to recognise it by listening.</Text>
+        <Segmented
+          values={["text", "audio"]}
+          labels={["Text", "Audio only"]}
+          active={state.quizPromptMode ?? "text"}
+          onChange={(value) => onPatch({ quizPromptMode: value as AppState["quizPromptMode"] })}
+        />
+      </Panel>
+
+      {state.quizPromptMode !== "audio" && (
+        <Panel>
+          <Text style={styles.sectionTitle}>Recitation button</Text>
+          <Text style={styles.cardSubtitle}>Keep a playback button on each text question, or make the quiz fully visual.</Text>
+          <Segmented
+            values={["on", "off"]}
+            labels={["Show", "Hide"]}
+            active={state.quizReciteButton === false ? "off" : "on"}
+            onChange={(value) => onPatch({ quizReciteButton: value === "on" })}
+          />
+        </Panel>
+      )}
+
+      <Panel>
+        <Text style={styles.sectionTitle}>Range</Text>
+        <Text style={styles.cardSubtitle}>{state.quizCustomRange ? "Use a temporary range just for this quiz." : `Default: your revision range (${revisionSummary || "not set"}).`}</Text>
+        <Segmented
+          values={["revision", "custom"]}
+          labels={["My revision", "Custom"]}
+          active={state.quizCustomRange ? "custom" : "revision"}
+          onChange={(value) => onPatch({ quizCustomRange: value === "custom" })}
+        />
+      </Panel>
+
+      {state.quizCustomRange && quizRange && (
+        <KnownSurahRangeCard
+          index={0}
+          range={quizRange}
+          onChange={updateQuizRange}
+        />
+      )}
+
+      <PrimaryButton label="Start quiz" icon="arrow-forward" onPress={onStart} />
+    </ScrollView>
+  );
+}
+
+function QuizSessionScreen({
+  state,
+  safeTop,
+  safeBottom,
+  onPatch,
+  onMark,
+  onExit
+}: {
+  state: AppState;
+  safeTop: number;
+  safeBottom: number;
+  onPatch: (next: Partial<AppState>) => void;
+  onMark: (status: ResultStatus) => void;
+  onExit: (screen?: Screen) => void;
+}) {
+  const total = state.quizDeck.length;
+  const index = Math.min(state.quizIndex, Math.max(0, total - 1));
+  const question = state.quizDeck[index];
+  const progress: DimensionValue = total ? `${Math.round(((index + 1) / total) * 100)}%` : "0%";
+  const arScale = arabicSizeScale[state.arabicSize] ?? 1;
+  const actionBottom = safeBottom + (Platform.OS === "android" ? 28 : 34);
+  const cardBottom = actionBottom + (Platform.OS === "android" ? 88 : 98);
+  const values = Object.values(state.quizResults ?? {});
+  const solid = values.filter((value) => value === "solid").length;
+  const shaky = values.filter((value) => value === "shaky").length;
+  const forgot = values.filter((value) => value === "forgot").length;
+
+  useEffect(() => () => stopAyah(), []);
+
+  if (state.quizPhase === "done" || !question) {
+    return (
+      <ScrollView style={styles.sessionBg} contentContainerStyle={[styles.doneContent, { paddingTop: safeTop + 50, paddingBottom: safeBottom + 30 }]} showsVerticalScrollIndicator={false}>
+        <View style={styles.doneCheck}>
+          <Ionicons name="checkmark" size={42} color={colors.gold} />
+        </View>
+        <Text style={styles.doneTitle}>Quiz complete</Text>
+        <Text style={styles.doneSub}>{values.length} temporary question{values.length === 1 ? "" : "s"} checked</Text>
+        <View style={styles.statRow}>
+          <ResultBox value={solid} label="Solid" color={colors.mint} />
+          <ResultBox value={shaky} label="Shaky" color={colors.goldDark} />
+          <ResultBox value={forgot} label="Forgot" color={colors.red} />
+        </View>
+        <Panel>
+          <Text style={styles.sectionTitle}>Not saved to progress</Text>
+          <Text style={styles.cardSubtitle}>Quiz marks are just a live self-check. Your weak āyāt, streak, khatm progress, and review journal were not changed.</Text>
+        </Panel>
+        <OutlineButton label="Run another quiz" onPress={() => onPatch({ screen: "quizSetup", quizPhase: "idle", quizDeck: [], quizIndex: 0, quizResults: {} })} />
+        <PrimaryButton label="Back to home" onPress={() => onExit("home")} />
+      </ScrollView>
+    );
+  }
+
+  return (
+    <View style={styles.sessionBg}>
+      <View style={[styles.sessionTop, { paddingTop: safeTop + 12 }]}>
+        <IconButton name="close" onPress={() => onExit("home")} />
+        <Text style={[styles.counterPill, styles.revisionTitlePill]} numberOfLines={1}>QUIZ · {index + 1}/{total}</Text>
+        <IconButton name="settings-outline" onPress={() => onPatch({ screen: "quizSetup" })} />
+      </View>
+      <Text style={styles.sessionSubtitle}>{question.label} · start at āyah {question.ayah}</Text>
+      <View style={styles.sessionProgressTrack}>
+        <LinearGradient colors={[colors.mint, "#6aa991"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.sessionProgress, { width: progress }]} />
+      </View>
+      <View style={[styles.cardStack, styles.memoriseCardStack, { top: safeTop + (Platform.OS === "android" ? 108 : 116), bottom: cardBottom }]}>
+        <View style={[styles.behindCard, styles.behindCardOne]} />
+        <View style={[styles.behindCard, styles.behindCardTwo]} />
+        <View style={[styles.practiceCard, styles.quizPracticeCard]}>
+          <View style={styles.quizCardBody}>
+            <Text style={styles.modeChip}>CONTINUE FOR 5 ĀYĀT</Text>
+            <Text style={styles.quizInstruction}>Recite from āyah {question.ayah} to āyah {question.continueTo}, then mark the attempt.</Text>
+            {state.quizPromptMode === "audio" ? (
+              <View style={styles.quizAudioOnly}>
+                <Ionicons name="volume-high-outline" size={34} color={colors.mint} />
+                <Text style={styles.cardTitle}>Audio-only prompt</Text>
+                <Text style={styles.cardSubtitle}>Listen first. Try to identify the āyah and continue from memory before checking anything.</Text>
+              </View>
+            ) : (
+              <>
+                <Arabic style={[styles.quizArabic, { fontSize: 27 * arScale, lineHeight: 54 * arScale }]}>{question.full}</Arabic>
+                <Text style={styles.translation}>{question.translation}</Text>
+              </>
+            )}
+          </View>
+          {(state.quizPromptMode === "audio" || state.quizReciteButton !== false) && (
+            <Pressable style={styles.audioButton} onPress={() => playAyah(question.surah, question.ayah, state.reciterId)}>
+              <View style={styles.audioIcon}>
+                <Ionicons name="play" size={12} color="#fff" />
+              </View>
+              <Text style={styles.audioText}>Play recitation</Text>
+            </Pressable>
+          )}
+        </View>
+      </View>
+      <View style={[styles.markRow, { bottom: actionBottom }]}>
+        <View style={styles.markRowInner}>
+          <MarkButton label="Forgot" sub="lost place" color={colors.red} onPress={() => onMark("forgot")} />
+          <MarkButton label="Shaky" sub="hesitated" color={colors.goldDark} onPress={() => onMark("shaky")} />
+          <MarkButton label="Solid" sub="clean run" color="#fff" filled onPress={() => onMark("solid")} />
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -416,6 +652,8 @@ function SessionScreen({
   const progress = sessionProgressWidth(state.cardIndex, total);
   const translateX = useRef(new Animated.Value(0)).current;
   const isRev = isRevisionFlow(item);
+  const isRecent = state.sessionMode === "recent";
+  const isWeakReview = state.sessionMode === "weak" || state.sessionMode === "yesterdayWeak";
   const reading = isRev && state.revisionReadAyah > 0;
   const arScale = arabicSizeScale[state.arabicSize] ?? 1;
   const readCard = reading ? ayahCard(item.surah ?? 0, state.revisionReadAyah, state.arabicScript) : null;
@@ -429,8 +667,8 @@ function SessionScreen({
   const cardBottom = actionBottom + actionHeight + (Platform.OS === "android" ? 26 : 34);
   const memoSurahName = isRev ? "" : (item.surah?.split("·").slice(1).join("·").trim() || item.surah || "Al-Mulk");
   const topTitle = isRev
-    ? "REVISION · RECITE FROM HERE"
-    : state.sessionMode === "weak"
+    ? isRecent ? "RECENT · SOLIDIFY" : "REVISION · RECITE FROM HERE"
+    : isWeakReview
       ? "REPEAT · YOU SLIPPED HERE"
       : "TODAY'S MEMORISATION";
   const topSubtitle = isRev
@@ -525,7 +763,7 @@ function SessionScreen({
   );
 
   const confirmFinishedSurah = () => {
-    Alert.alert("Mark surah complete?", "This marks only this surah as complete inside the current revision cycle.", [
+    Alert.alert("Mark surah complete?", isRecent ? "This completes the surah for this recent-solidifier session only." : "This marks only this surah as complete inside the current revision cycle.", [
       { text: "Cancel", style: "cancel" },
       { text: "Finished", onPress: () => onMark("finished") }
     ]);
@@ -540,7 +778,17 @@ function SessionScreen({
         <View style={styles.doneCheck}>
           <Ionicons name="checkmark" size={42} color={colors.gold} />
         </View>
-        <Text style={styles.doneTitle}>{state.sessionMode === "new" ? "Sabaq locked in" : state.sessionMode === "weak" ? "Weak spots revisited" : "Revision complete"}</Text>
+        <Text style={styles.doneTitle}>
+          {state.sessionMode === "new"
+            ? "Sabaq locked in"
+            : state.sessionMode === "weak"
+              ? "Weak spots revisited"
+              : state.sessionMode === "yesterdayWeak"
+                ? "Yesterday's weak spots reviewed"
+                : state.sessionMode === "recent"
+                  ? "Recent sūrahs strengthened"
+                  : "Revision complete"}
+        </Text>
         <Text style={styles.doneSub}>{total} card{total === 1 ? "" : "s"} reviewed</Text>
         <View style={styles.statRow}>
           <ResultBox value={isRev ? values.filter((v) => v === "finished").length : values.filter((v) => v === "solid").length} label={isRev ? "Finished" : "Solid"} color={colors.mint} />
@@ -642,12 +890,12 @@ function SessionScreen({
         </View>
       ) : reading ? (
         <View style={[styles.markRow, { bottom: actionBottom }]}>
-          <View style={styles.markRowInner}>
+          <View style={styles.readActionStack}>
             <PrimaryButton
               label={readAlreadyWeak ? "In weak" : "Add to weak"}
               icon={readAlreadyWeak ? undefined : "bookmark-outline"}
               onPress={() => onAddWeak(currentSurahNumber, state.revisionReadAyah, isRevisionFlow(item) ? item.label : "")}
-              style={[readAlreadyWeak ? styles.weakActionDone : styles.weakActionButton, styles.readWeakButton]}
+              style={readAlreadyWeak ? styles.weakActionDone : styles.weakActionButton}
               textColor={colors.green}
             />
             <PrimaryButton

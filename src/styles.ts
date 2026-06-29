@@ -1171,6 +1171,10 @@ export const styles = StyleSheet.create({
     gap: 13,
     ...shadow
   },
+  quizIntroCard: {
+    backgroundColor: "#fffdf8",
+    borderColor: colors.line
+  },
   revisionPickList: {
     gap: 8,
     marginTop: 12
@@ -1315,6 +1319,40 @@ export const styles = StyleSheet.create({
     overflow: "hidden",
     ...heavyShadow
   },
+  quizPracticeCard: {
+    justifyContent: "space-between",
+    gap: 14
+  },
+  quizCardBody: {
+    flex: 1,
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 14
+  },
+  quizInstruction: {
+    color: colors.mintDark,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "800",
+    textAlign: "center",
+    paddingHorizontal: 10
+  },
+  quizAudioOnly: {
+    width: "100%",
+    borderRadius: 22,
+    backgroundColor: colors.mintPale,
+    borderWidth: 1,
+    borderColor: "#d7e8df",
+    paddingVertical: 28,
+    paddingHorizontal: 18,
+    alignItems: "center",
+    gap: 9
+  },
+  quizArabic: {
+    color: "#1f2d27",
+    textAlign: "center"
+  },
   modeChip: {
     borderRadius: 20,
     paddingVertical: 7,
@@ -1422,27 +1460,31 @@ export const styles = StyleSheet.create({
     maxWidth: 460,
     gap: Platform.OS === "android" ? 8 : 10
   },
+  readActionStack: {
+    width: "100%",
+    maxWidth: 460,
+    gap: 10
+  },
   sessionPrimaryAction: {
     flex: 1,
     minWidth: 0
   },
   weakActionButton: {
     backgroundColor: colors.gold,
-    paddingHorizontal: 16,
-    flexGrow: 0
+    width: "100%",
+    minWidth: 0,
+    paddingHorizontal: 16
   },
   weakActionDone: {
     backgroundColor: colors.mintPale,
-    paddingHorizontal: 16,
-    flexGrow: 0
-  },
-  readWeakButton: {
-    flex: 0.8,
-    minWidth: 108
+    width: "100%",
+    minWidth: 0,
+    paddingHorizontal: 16
   },
   readContinueButton: {
-    flex: 1.35,
-    paddingHorizontal: Platform.OS === "android" ? 10 : 14
+    width: "100%",
+    minWidth: 0,
+    paddingHorizontal: Platform.OS === "android" ? 12 : 16
   },
   markButton: {
     flex: 1,
@@ -1906,6 +1948,10 @@ export const styles = StyleSheet.create({
   },
   homeKhatmCard: {
     gap: 11
+  },
+  quizHomeCard: {
+    gap: 10,
+    borderColor: "#d7e5df"
   },
   homeKhatmRing: {
     width: 50,

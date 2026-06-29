@@ -3,7 +3,7 @@ import * as Notifications from "expo-notifications";
 import { useEffect, useRef, useState } from "react";
 import { AppState as RNAppState } from "react-native";
 import { buildDeckContext, buildReminderSettings, serializableState, shouldShowTabs } from "../appStateSelectors";
-import { getDeck, isRevisionFlow, PracticeItem } from "../deck";
+import { buildQuizDeck, getDeck, isRevisionFlow, PracticeItem } from "../deck";
 import {
   cancelComebackReminder,
   maybeRequestNativeReviewEveryOtherDay,
@@ -149,6 +149,37 @@ export function useHifzAppState() {
     });
   };
 
+  const startQuiz = () => {
+    const ranges = state.quizCustomRange ? [state.quizRange] : state.revisionRanges;
+    const deck = buildQuizDeck(ranges, state.quizQuestionCount || 5, state.arabicScript);
+    patch({
+      screen: "quizSession",
+      quizDeck: deck,
+      quizIndex: 0,
+      quizResults: {},
+      quizPhase: deck.length ? "running" : "done"
+    });
+  };
+
+  const markQuiz = (status: ResultStatus) => {
+    const question = state.quizDeck[state.quizIndex];
+    if (!question) {
+      patch({ quizPhase: "done" });
+      return;
+    }
+    const nextResults = { ...(state.quizResults ?? {}), [question.id]: status };
+    const nextIndex = state.quizIndex + 1;
+    patch({
+      quizResults: nextResults,
+      quizIndex: nextIndex,
+      quizPhase: nextIndex >= state.quizDeck.length ? "done" : "running"
+    });
+  };
+
+  const resetQuiz = (screen: Screen = "home") => {
+    patch({ screen, quizDeck: [], quizIndex: 0, quizResults: {}, quizPhase: "idle" });
+  };
+
   const surahNumberOf = (label: string) => Number(label.split("·")[0]?.trim()) || 0;
   const surahNameOf = (label: string) => label.split("·").slice(1).join("·").trim() || label;
 
@@ -183,7 +214,7 @@ export function useHifzAppState() {
       results: { ...state.results, [key]: status },
       reviewHistory: [record, ...(state.reviewHistory ?? [])].slice(0, 80)
     };
-    if (isRevisionFlow(item) && status === "finished") {
+    if (isRevisionFlow(item) && state.sessionMode === "revision" && status === "finished") {
       const completedSurahs = { ...(state.revisionCompletedSurahs ?? {}), [String(item.surah ?? state.cardIndex)]: true };
       const allDone = deck.every((entry, index) => {
         if (!isRevisionFlow(entry)) return true;
@@ -236,7 +267,17 @@ export function useHifzAppState() {
 
   // Revision: user taps the āyah where they got stuck — enter "read" mode to practise it.
   const stopAtAyah = (surah: number, ayah: number) => {
-    const covered = Math.max(1, ayah - (state.revisionResumeAyah || ayah));
+    if (state.sessionMode !== "revision") {
+      patch({
+        revisionReadAyah: ayah,
+        revisionResumeAyah: ayah
+      });
+      return;
+    }
+    const previous = state.revisionProgressIndex === state.cardIndex
+      ? state.revisionProgressAyah || state.revisionResumeAyah || ayah
+      : state.revisionResumeAyah || ayah;
+    const covered = Math.max(0, ayah - previous);
     patch({
       revisionReadAyah: ayah,
       revisionResumeAyah: ayah,
@@ -249,7 +290,42 @@ export function useHifzAppState() {
   // Add the āyah currently being practised to the weak deck (from the read-mode button).
   const addReadWeak = (surah: number, ayah: number, label: string) => {
     const key = `${surah}:${ayah}`;
-    if (state.results[key]) return;
+    if (state.sessionMode !== "revision") {
+      if (state.results[key]) {
+        patch({ revisionResumeAyah: Math.max(state.revisionResumeAyah || ayah, ayah) });
+        return;
+      }
+      const record: ReviewRecord = {
+        id: `${state.sessionMode}-${key}-${Date.now()}`,
+        mode: state.sessionMode,
+        ayahLabel: `${surahNameOf(label)} ${ayah}`,
+        result: `stuck@${ayah}`,
+        timestamp: new Date().toISOString(),
+        surah,
+        ayah
+      };
+      patch({
+        revisionResumeAyah: Math.max(state.revisionResumeAyah || ayah, ayah),
+        results: { ...state.results, [key]: `stuck@${ayah}` },
+        reviewHistory: [record, ...(state.reviewHistory ?? [])].slice(0, 80)
+      });
+      return;
+    }
+    const previous = state.revisionProgressIndex === state.cardIndex
+      ? state.revisionProgressAyah || state.revisionResumeAyah || ayah
+      : state.revisionResumeAyah || ayah;
+    const checkpointAyah = Math.max(previous, ayah);
+    const covered = Math.max(0, checkpointAyah - previous);
+    const checkpoint = {
+      revisionResumeAyah: checkpointAyah,
+      revisionProgressIndex: state.cardIndex,
+      revisionProgressAyah: checkpointAyah,
+      ...dailyRevisionFields(state, covered)
+    };
+    if (state.results[key]) {
+      patch(checkpoint);
+      return;
+    }
     const record: ReviewRecord = {
       id: `revision-${key}-${Date.now()}`,
       mode: "revision",
@@ -260,6 +336,7 @@ export function useHifzAppState() {
       ayah
     };
     patch({
+      ...checkpoint,
       results: { ...state.results, [key]: `stuck@${ayah}` },
       reviewHistory: [record, ...(state.reviewHistory ?? [])].slice(0, 80)
     });
@@ -279,6 +356,9 @@ export function useHifzAppState() {
     nav,
     beginApp,
     startSession,
+    startQuiz,
+    markQuiz,
+    resetQuiz,
     advance,
     markCard,
     completeRevisionSurah,

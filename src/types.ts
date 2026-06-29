@@ -1,4 +1,4 @@
-﻿export type Screen = "onboarding" | "home" | "notif" | "modes" | "session" | "progress" | "board" | "recap" | "profile" | "khatms";
+﻿export type Screen = "onboarding" | "home" | "notif" | "modes" | "session" | "quizSetup" | "quizSession" | "progress" | "board" | "recap" | "profile" | "khatms";
 
 export type KhatmRecord = {
   id: string;
@@ -8,7 +8,8 @@ export type KhatmRecord = {
   weakAyahs?: Array<{ surah: number; ayah: number; label: string }>;
 };
 export type Goal = "new" | "revision" | "both";
-export type SessionMode = "new" | "revision" | "weak";
+export type SessionMode = "new" | "revision" | "weak" | "yesterdayWeak" | "recent";
+export type QuizPromptMode = "text" | "audio";
 export type ResultStatus = "solid" | "shaky" | "forgot" | "finished" | string;
 export type CommunityMode = "solo" | "friends" | "class";
 export type ActiveHoursMode = "same" | "weekend" | "daily";
@@ -26,6 +27,17 @@ export type ReviewRecord = {
   timestamp: string;
   surah?: number;
   ayah?: number;
+};
+
+export type QuizQuestion = {
+  id: string;
+  surah: number;
+  ayah: number;
+  label: string;
+  prompt: string;
+  full: string;
+  translation: string;
+  continueTo: number;
 };
 
 export type Days = {
@@ -103,6 +115,15 @@ export type AppState = {
   revisionDoneToday: number;
   revisionDoneDate: string;
   khatms: KhatmRecord[];
+  quizQuestionCount: number;
+  quizPromptMode: QuizPromptMode;
+  quizReciteButton: boolean;
+  quizCustomRange: boolean;
+  quizRange: SurahRange;
+  quizDeck: QuizQuestion[];
+  quizIndex: number;
+  quizResults: Record<string, ResultStatus>;
+  quizPhase: "idle" | "running" | "done";
   sessionPhase: "idle" | "running" | "done";
   results: Record<string, ResultStatus>;
   notificationsScheduled: number;
@@ -187,6 +208,20 @@ export const initialState: AppState = {
   revisionDoneToday: 0,
   revisionDoneDate: "",
   khatms: [],
+  quizQuestionCount: 5,
+  quizPromptMode: "text",
+  quizReciteButton: true,
+  quizCustomRange: false,
+  quizRange: {
+    id: "quiz-default",
+    fromSurah: 1,
+    toSurah: 1,
+    label: "1 · Al-Fatihah"
+  },
+  quizDeck: [],
+  quizIndex: 0,
+  quizResults: {},
+  quizPhase: "idle",
   sessionPhase: "idle",
   results: {},
   notificationsScheduled: 0,
