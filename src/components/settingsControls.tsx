@@ -14,9 +14,11 @@ export function ServiceScheduleCard({
   subtitle,
   enabled,
   frequency,
+  frequencyLabel,
   onToggle,
   onFrequency,
   days,
+  daysLabel,
   onToggleDay,
   warn
 }: {
@@ -25,9 +27,11 @@ export function ServiceScheduleCard({
   subtitle: string;
   enabled: boolean;
   frequency: string;
+  frequencyLabel?: string;
   onToggle: () => void;
   onFrequency: (value: string) => void;
   days: Days;
+  daysLabel?: string;
   onToggleDay: (day: keyof Days) => void;
   warn?: boolean;
 }) {
@@ -45,9 +49,9 @@ export function ServiceScheduleCard({
       </View>
       {enabled && (
         <>
-          <Overline>How often</Overline>
+          <Overline>{frequencyLabel ?? "How often"}</Overline>
           <FrequencyScroller active={frequency} onChange={onFrequency} />
-          <Overline>Days</Overline>
+          <Overline>{daysLabel ?? "Days"}</Overline>
           <DayPicker days={days} onToggle={onToggleDay} />
         </>
       )}

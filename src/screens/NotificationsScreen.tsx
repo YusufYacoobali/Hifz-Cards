@@ -41,12 +41,24 @@ export function NotificationsScreen({
   };
   const updateRevisionRange = (id: string, fromSurah: number, toSurah: number) => {
     const revisionRanges = rebalanceRevisionRanges(state.revisionRanges, id, fromSurah, toSurah);
-    onPatch({ revisionRanges, revisionProgressIndex: 0, revisionProgressAyah: 1, revisionCompletedSurahs: {} });
+    onPatch({
+      revisionRanges,
+      revisionProgressIndex: 0,
+      revisionProgressAyah: 1,
+      revisionCompletedSurahs: {}
+    });
   };
   const addRevisionRange = () => {
     const free = nextFreeRange(state.revisionRanges) ?? { from: 114, to: 114 };
     const range = makeSurahRange(free.from, free.to, `rev-${Date.now()}`);
-    onPatch({ revisionRanges: [...state.revisionRanges, range], revisionTargetId: range.id, revisionProgressIndex: 0, revisionProgressAyah: 1, revisionCompletedSurahs: {} });
+    const revisionRanges = [...state.revisionRanges, range];
+    onPatch({
+      revisionRanges,
+      revisionTargetId: range.id,
+      revisionProgressIndex: 0,
+      revisionProgressAyah: 1,
+      revisionCompletedSurahs: {}
+    });
   };
   const removeRevisionRange = (id: string) => {
     if (state.revisionRanges.length <= 1) return;
@@ -162,8 +174,7 @@ export function NotificationsScreen({
           options={[3, 5, 7, 10, 12, 14, 30]}
           onChange={(revisionRoundDays) =>
             onPatch({
-              revisionRoundDays,
-              revisionLoad: recommendedRevisionAyat(state.revisionRanges, revisionRoundDays)
+              revisionRoundDays
             })
           }
         />

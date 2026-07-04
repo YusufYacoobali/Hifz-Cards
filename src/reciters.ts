@@ -33,6 +33,11 @@ export const reciters: Reciter[] = [
     folder: "Husary_128kbps_Mujawwad"
   },
   {
+    id: "hudhaify",
+    name: "Sheikh Ali Al-Hudhaify",
+    folder: "Hudhaify_128kbps"
+  },
+  {
     id: "minshawy",
     name: "Mohamed Siddiq Al-Minshawi",
     folder: "Minshawy_Murattal_128kbps"

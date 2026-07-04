@@ -7,6 +7,7 @@ import {
   Alert,
   Animated,
   DimensionValue,
+  Modal,
   PanResponder,
   Platform,
   Pressable,
@@ -22,6 +23,7 @@ import { HifzCard } from "./src/data";
 import {
   getDashboardStats,
   getProgressStats,
+  getMonthlyRecap,
   getWeeklyRecap,
   leaderboardEntries
 } from "./src/hifzModel";
@@ -30,13 +32,15 @@ import * as Sharing from "expo-sharing";
 import { captureRef } from "react-native-view-shot";
 import { playAyah, prefetchAyat, stopAyah } from "./src/audio";
 import { reciterById, reciters } from "./src/reciters";
-import { currentKhatmStats, makeSurahRange, monthConsistency, remainingRevisionRoundItems, revisionRoundItems, revisionTotals, surahNumberFromLabel } from "./src/planning";
+import { currentKhatmStats, dailyPracticePlan, makeSurahRange, monthConsistency, remainingRevisionRoundItems, revisionRoundItems, revisionTotals, surahNumberFromLabel } from "./src/planning";
 import { colors } from "./src/theme";
 import { styles } from "./src/styles";
 import { NewOnboardingScreen } from "./src/screens/NewOnboardingScreen";
 import { NotificationsScreen } from "./src/screens/NotificationsScreen";
-import { Arabic, ArabicDisplayCard, ArabicFontContext, AyahCard, BottomTabs, Divider, Header, HeroHeader, IconButton, KnownSurahRangeCard, Legend, MarkButton, ModeCard, OutlineButton, Overline, Panel, Podium, PrimaryButton, ProfileStat, ProgressLine, RecapStat, ResultBox, RevisionCard, Segmented, SettingsRow, StatCard, formatDueDate, formatHistoryTime, resultColor, resultLabel, tabBarHeight } from "./src/components";
-import { AppState, arabicSizeScale, ResultStatus, Screen, SessionMode } from "./src/types";
+import { Arabic, ArabicDisplayCard, ArabicFontContext, AyahCard, BottomTabs, Divider, Header, HeroHeader, IconButton, KnownSurahRangeCard, Legend, MarkButton, ModeCard, OutlineButton, Overline, Panel, Podium, PrimaryButton, ProfileStat, ProgressLine, RecapStat, ResultBox, RevisionCard, Segmented, SettingsRow, StatCard, formatDueDate, formatHistoryTime, resultColor, resultLabel } from "./src/components";
+import { AppState, arabicSizeScale, initialState, ResultStatus, Screen, SessionMode } from "./src/types";
+
+type DailyCelebrationKind = "new" | "revision" | "both";
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -54,10 +58,24 @@ export default function App() {
 function AppContent() {
   const { state, showTabs, patch, nav, beginApp, startSession, startQuiz, markQuiz, resetQuiz, markCard, completeRevisionSurah, stopAtAyah, addReadWeak, resumeRevision } = useHifzAppState();
   const insets = useSafeAreaInsets();
+  const plan = useMemo(() => dailyPracticePlan(state), [state]);
+  const [celebrationVisible, setCelebrationVisible] = useState(false);
+  const [celebrationPlan, setCelebrationPlan] = useState<ReturnType<typeof dailyPracticePlan> | null>(null);
+  const [celebrationKind, setCelebrationKind] = useState<DailyCelebrationKind>("both");
   const safe = {
     top: Math.max(insets.top, Platform.OS === "ios" ? 44 : 0),
     bottom: insets.bottom
   };
+
+  useEffect(() => {
+    if (celebrationVisible) return;
+    const next = nextDailyCelebration(plan, state.celebratedDailyGoalKeys ?? []);
+    if (!next) return;
+    setCelebrationPlan(plan);
+    setCelebrationKind(next.kind);
+    setCelebrationVisible(true);
+    patch({ celebratedDailyGoalKeys: [...(state.celebratedDailyGoalKeys ?? []), next.key].slice(-21) });
+  }, [celebrationVisible, patch, plan, state.celebratedDailyGoalKeys]);
 
   return (
     <View style={styles.safe}>
@@ -75,7 +93,7 @@ function AppContent() {
           )}
           {state.screen === "home" && <HomeScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onNav={nav} onModes={() => nav("modes")} onQuiz={() => nav("quizSetup")} />}
           {state.screen === "notif" && <NotificationsScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onPatch={patch} onNav={nav} />}
-          {state.screen === "modes" && <ModeScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onNav={nav} onStart={startSession} onCompleteSurah={completeRevisionSurah} />}
+          {state.screen === "modes" && <ModeScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onPatch={patch} onNav={nav} onStart={startSession} onCompleteSurah={completeRevisionSurah} />}
           {state.screen === "quizSetup" && <QuizSetupScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onPatch={patch} onNav={nav} onStart={startQuiz} />}
           {state.screen === "quizSession" && <QuizSessionScreen state={state} safeTop={safe.top} safeBottom={safe.bottom} onPatch={patch} onMark={markQuiz} onExit={resetQuiz} />}
           {state.screen === "session" && (
@@ -95,12 +113,103 @@ function AppContent() {
           {state.screen === "progress" && <ProgressScreen state={state} safeTop={safe.top} onNav={nav} onStart={startSession} />}
           {state.screen === "khatms" && <KhatmsScreen state={state} safeTop={safe.top} onNav={nav} onStart={startSession} />}
           {state.screen === "board" && <BoardScreen state={state} safeTop={safe.top} onPatch={patch} />}
-          {state.screen === "recap" && <RecapScreen state={state} safeTop={safe.top} onNav={nav} />}
+          {state.screen === "recap" && <RecapScreen state={state} safeTop={safe.top} onNav={nav} period="week" />}
+          {state.screen === "monthlyRecap" && <RecapScreen state={state} safeTop={safe.top} onNav={nav} period="month" />}
           {state.screen === "profile" && <ProfileScreen state={state} safeTop={safe.top} onPatch={patch} onNav={nav} />}
           {showTabs && <BottomTabs screen={state.screen} safeBottom={safe.bottom} onNav={nav} />}
+          <DailyGoalCelebration visible={celebrationVisible} kind={celebrationKind} plan={celebrationPlan} onClose={() => setCelebrationVisible(false)} />
         </ArabicFontContext.Provider>
       </View>
     </View>
+  );
+}
+
+function nextDailyCelebration(plan: ReturnType<typeof dailyPracticePlan>, celebratedKeys: string[]): { kind: DailyCelebrationKind; key: string } | null {
+  const celebrated = new Set(celebratedKeys);
+  if (plan.new.enabled && plan.revision.enabled && plan.complete) {
+    return celebrated.has(plan.celebrationKeys.both) ? null : { kind: "both", key: plan.celebrationKeys.both };
+  }
+  if (plan.new.enabled && plan.new.complete && !celebrated.has(plan.celebrationKeys.new)) {
+    return { kind: "new", key: plan.celebrationKeys.new };
+  }
+  if (plan.revision.enabled && plan.revision.complete && !celebrated.has(plan.celebrationKeys.revision)) {
+    return { kind: "revision", key: plan.celebrationKeys.revision };
+  }
+  return null;
+}
+
+function DailyGoalCelebration({
+  visible,
+  kind,
+  plan,
+  onClose
+}: {
+  visible: boolean;
+  kind: DailyCelebrationKind;
+  plan: ReturnType<typeof dailyPracticePlan> | null;
+  onClose: () => void;
+}) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.9)).current;
+  const halo = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!visible) return;
+    opacity.setValue(0);
+    scale.setValue(0.9);
+    halo.setValue(0);
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, friction: 7, tension: 95, useNativeDriver: true }),
+      Animated.timing(halo, { toValue: 1, duration: 900, useNativeDriver: true })
+    ]).start();
+  }, [halo, opacity, scale, visible]);
+
+  const haloScale = halo.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.18] });
+  const haloOpacity = halo.interpolate({ inputRange: [0, 1], outputRange: [0.26, 0] });
+  const showNew = kind === "new" || kind === "both";
+  const showRevision = kind === "revision" || kind === "both";
+  const newLine = showNew && plan?.new.enabled ? `${Math.min(plan.new.done, plan.new.target)}/${plan.new.target} new ayat` : "";
+  const revisionLine = showRevision && plan?.revision.enabled ? `${Math.min(plan.revision.done, plan.revision.target)}/${plan.revision.target} revision ayat` : "";
+  const copy = {
+    new: {
+      title: "New memorisation done",
+      subtitle: "You completed today's new ayah target. Let it settle, then revisit it later."
+    },
+    revision: {
+      title: "Revision goal done",
+      subtitle: "You completed today's revision target. That consistency is what keeps it alive."
+    },
+    both: {
+      title: "Daily plan complete",
+      subtitle: "Beautiful work. You showed up for today's Qur'an plan."
+    }
+  }[kind];
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+      <View style={styles.celebrationOverlay}>
+        <Animated.View style={[styles.celebrationCard, { opacity, transform: [{ scale }] }]}>
+          <Animated.View style={[styles.celebrationHalo, { opacity: haloOpacity, transform: [{ scale: haloScale }] }]} />
+          <View style={styles.celebrationBurst}>
+            {[0, 1, 2, 3, 4, 5, 6, 7].map((item) => (
+              <View key={item} style={[styles.celebrationRay, { transform: [{ rotate: `${item * 45}deg` }] }]} />
+            ))}
+            <LinearGradient colors={[colors.gold, "#f8edc8"]} style={styles.celebrationMedal}>
+              <Ionicons name="checkmark" size={38} color={colors.green} />
+            </LinearGradient>
+          </View>
+          <Text style={styles.celebrationTitle}>{copy.title}</Text>
+          <Text style={styles.celebrationSubtitle}>{copy.subtitle}</Text>
+          <View style={styles.celebrationStats}>
+            {!!newLine && <Text style={styles.celebrationStat}>{newLine}</Text>}
+            {!!revisionLine && <Text style={styles.celebrationStat}>{revisionLine}</Text>}
+          </View>
+          <Text style={styles.celebrationDua}>May Allah make it firm in your heart.</Text>
+          <PrimaryButton label="Ameen" onPress={onClose} style={styles.celebrationButton} textColor={colors.green} />
+        </Animated.View>
+      </View>
+    </Modal>
   );
 }
 
@@ -120,6 +229,7 @@ function HomeScreen({
   onQuiz: () => void;
 }) {
   const dashboard = getDashboardStats(state);
+  const plan = dailyPracticePlan(state);
   const revision = revisionTotals(state);
   const homeKhatm = currentKhatmStats(state);
   const homeHistory = state.reviewHistory ?? [];
@@ -141,18 +251,21 @@ function HomeScreen({
               <View style={styles.flex}>
                 <Overline>Today</Overline>
                 <Text style={styles.cardTitle}>
-                  {state.sabaqOn ? `${state.perDay} new/day` : "New paused"} · {state.revisionOn ? `${revision.remainingToday} āyāt to revise today` : "revision off"}
+                  {plan.new.enabled ? `${plan.new.remaining} new left` : "New paused"} · {plan.revision.enabled ? `${plan.revision.remaining} āyāt to revise` : "revision off"}
                 </Text>
                 <Text style={styles.cardSubtitle}>
-                  {state.revisionOn
-                    ? `${revision.doneToday}/${revision.dailyTarget} revised today · full khatm ${revision.rounds + 1}`
+                  {plan.revision.enabled
+                    ? `${plan.new.enabled ? `${plan.new.done}/${plan.new.target} new · ` : ""}${plan.revision.done}/${plan.revision.target} revised · full khatm ${revision.rounds + 1}`
                     : `New memorisation continues from ${dashboard.currentSurah} ${dashboard.rangeLabel}.`}
                 </Text>
               </View>
               <View style={styles.todayRing}>
-                <Text style={styles.todayRingValue}>{dashboard.completedCards}</Text>
-                <Text style={styles.todayRingLabel}>cards</Text>
+                <Text style={styles.todayRingValue}>{plan.totalDone}</Text>
+                <Text style={styles.todayRingLabel}>today</Text>
               </View>
+            </View>
+            <View style={styles.todayAction}>
+              <PrimaryButton label="Start session" icon="arrow-forward" onPress={onModes} />
             </View>
           </Panel>
           <Pressable style={styles.weakButton} onPress={() => onNav("progress")}>
@@ -218,14 +331,6 @@ function HomeScreen({
               <Ionicons name="chevron-forward" size={20} color={colors.faint} />
             </View>
           </Pressable>
-          <Panel style={styles.notificationSummary}>
-            <View style={styles.flex}>
-              <Overline>Reminders today</Overline>
-              <Text style={styles.cardTitle}>New memorisation and revision</Text>
-              <Text style={styles.cardSubtitle}>Custom nudges inside your active hours.</Text>
-            </View>
-            <IconButton name="notifications-outline" onPress={() => onNav("notif")} />
-          </Panel>
           <Panel>
             <View style={styles.rowBetween}>
               <Text style={styles.sectionTitle}>Recent review journal</Text>
@@ -245,9 +350,6 @@ function HomeScreen({
           </Panel>
         </View>
       </ScrollView>
-      <View style={[styles.homeStickyBar, { bottom: tabBarHeight(safeBottom), paddingBottom: 12 }]}>
-        <PrimaryButton label="Start card session" icon="arrow-forward" onPress={onModes} />
-      </View>
     </View>
   );
 }
@@ -256,6 +358,7 @@ function ModeScreen({
   state,
   safeTop,
   safeBottom,
+  onPatch,
   onNav,
   onStart,
   onCompleteSurah
@@ -263,16 +366,19 @@ function ModeScreen({
   state: AppState;
   safeTop: number;
   safeBottom: number;
+  onPatch: (next: Partial<AppState>) => void;
   onNav: (screen: Screen) => void;
   onStart: (mode: SessionMode, startIndex?: number, startAyah?: number) => void;
   onCompleteSurah: (index: number) => void;
 }) {
   const [revisionDetailOpen, setRevisionDetailOpen] = useState(false);
+  const [recentDetailOpen, setRecentDetailOpen] = useState(false);
   const newCount = buildNewDeck(state.newRange, state.arabicScript).length;
   const revisionDeck = buildRevisionDeck(state.revisionRanges, state.arabicScript, state.revisionOrder);
   const weakCount = buildWeakDeck(state.reviewHistory, state.arabicScript).length;
   const yesterdayWeakCount = buildYesterdayWeakDeck(state.reviewHistory, state.arabicScript).length;
-  const recentCount = buildRecentRevisionDeck(state.reviewHistory, state.newRange, state.arabicScript).length;
+  const recentDeck = buildRecentRevisionDeck(state.reviewHistory, state.revisionRanges, state.arabicScript, state.recentSelectedSurahs, state.recentSurahLimit);
+  const recentCount = recentDeck.length;
   const revisionCount = revisionDeck.length;
   const revision = revisionTotals(state);
   const roundItems = revisionRoundItems(state);
@@ -298,6 +404,85 @@ function ModeScreen({
     }
     onStart("weak");
   };
+  const startRecent = () => {
+    if (!revisionDeck.length) {
+      Alert.alert("No memorised surahs selected", "Add the surahs you know in your revision plan first, then use Recent Sūrah Solidifier.");
+      return;
+    }
+    onStart("recent");
+  };
+  const toggleRecentSurah = (surah: number) => {
+    const current = state.recentSelectedSurahs ?? [];
+    const next = current.includes(surah)
+      ? current.filter((item) => item !== surah)
+      : [...current, surah].slice(-Math.max(1, state.recentSurahLimit || 3));
+    onPatch({ recentSelectedSurahs: next });
+  };
+  const setRecentLimit = (recentSurahLimit: number) => {
+    onPatch({
+      recentSurahLimit,
+      recentSelectedSurahs: (state.recentSelectedSurahs ?? []).slice(-recentSurahLimit)
+    });
+  };
+
+  if (recentDetailOpen) {
+    const selected = new Set(state.recentSelectedSurahs ?? []);
+    const knownCount = Math.max(1, revisionDeck.length);
+    const countOptions = Array.from(new Set([1, 2, 3, 5, 10, knownCount].filter((value) => value <= knownCount)));
+    return (
+      <ScrollView style={styles.fullScreen} contentContainerStyle={[styles.settingsContent, { paddingTop: safeTop + 8, paddingBottom: Math.max(110, safeBottom + 96) }]} showsVerticalScrollIndicator={false}>
+        <Header title="Pick recent surahs" onBack={() => setRecentDetailOpen(false)} />
+        <Panel>
+          <View style={styles.settingRowInner}>
+            <View style={styles.iconTile}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={colors.mint} />
+            </View>
+            <View style={styles.flex}>
+              <Text style={styles.cardTitle}>Recent Sūrah Solidifier</Text>
+              <Text style={styles.cardSubtitle}>Choose from your memorised revision range only. Nothing outside your known sections will appear here.</Text>
+            </View>
+          </View>
+          <Overline>How many surahs</Overline>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.frequencyRail}>
+            {countOptions.map((count) => {
+              const active = state.recentSurahLimit === count;
+              return (
+                <Pressable key={count} style={[styles.frequencyChip, active && styles.frequencyChipSelected]} onPress={() => setRecentLimit(count)}>
+                  <Text style={[styles.frequencyText, active && styles.frequencyTextSelected]}>{count}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+          <Text style={styles.cardSubtitle}>
+            Selected {selected.size || Math.min(state.recentSurahLimit || 3, revisionDeck.length)} of {Math.min(state.recentSurahLimit || 3, revisionDeck.length)}. If you select none, the app uses your most recent known surahs.
+          </Text>
+        </Panel>
+        <Panel>
+          <View style={styles.rowBetween}>
+            <Text style={styles.sectionTitle}>Choose surahs</Text>
+            <Text style={styles.greenStrong}>{revisionDeck.length} known</Text>
+          </View>
+          <View style={styles.revisionPickList}>
+            {revisionDeck.map((entry) => {
+              const surah = entry.surah ?? 0;
+              const active = selected.has(surah);
+              return (
+                <Pressable key={surah} style={[styles.revisionPickRow, active && styles.recentPickSelected]} onPress={() => toggleRecentSurah(surah)}>
+                  <Text style={styles.revisionPickBadge}>{surah}</Text>
+                  <View style={styles.flex}>
+                    <Text style={styles.revisionPickLabel}>{entry.label}</Text>
+                    <Text style={styles.cardSubtitle}>{entry.passage.length} ayat</Text>
+                  </View>
+                  <Ionicons name={active ? "checkmark-circle" : "ellipse-outline"} size={22} color={active ? colors.mint : colors.faint} />
+                </Pressable>
+              );
+            })}
+          </View>
+        </Panel>
+        <PrimaryButton label={`Start ${recentCount || Math.min(state.recentSurahLimit || 3, revisionDeck.length)} surah solidifier`} icon="arrow-forward" onPress={startRecent} />
+      </ScrollView>
+    );
+  }
 
   if (revisionDetailOpen) {
     return (
@@ -394,23 +579,10 @@ function ModeScreen({
       <ModeCard
         icon="shield-checkmark-outline"
         title="Recent Sūrah Solidifier"
-        subtitle={`Revise the ${recentCount || 3} most recent learnt sūrah${(recentCount || 3) === 1 ? "" : "s"} end-to-end`}
-        quote="A focused pass over fresh memorisation before it has time to fade."
-        onPress={() => onStart("recent")}
+        subtitle={`Choose ${state.recentSurahLimit || 3} from your memorised sūrah range`}
+        quote={recentCount ? `${recentCount} selected for a focused strengthening pass.` : "Pick the surahs you want to solidify."}
+        onPress={() => setRecentDetailOpen(true)}
       />
-      <Panel>
-        <View style={styles.rowBetween}>
-          <View style={styles.flex}>
-            <Overline>Revision cycle</Overline>
-            <Text style={styles.cardTitle}>{revision.pct}% complete</Text>
-            <Text style={styles.cardSubtitle}>{revision.done}/{revision.total} ayat - {revision.remaining} left</Text>
-          </View>
-          <Text style={styles.greenStrong}>Full khatm {revision.rounds + 1}</Text>
-        </View>
-        <View style={styles.track}>
-          <View style={[styles.fill, { width: `${revision.pct}%`, backgroundColor: colors.mint }]} />
-        </View>
-      </Panel>
       <ModeCard
         icon="warning-outline"
         title="Weak Spot Cards"
@@ -1025,6 +1197,7 @@ function ProgressScreen({ state, safeTop, onNav, onStart }: { state: AppState; s
           </View>
         </Panel>
         <PrimaryButton label="See weekly recap" icon="arrow-forward" onPress={() => onNav("recap")} />
+        <OutlineButton label="See monthly recap" onPress={() => onNav("monthlyRecap")} />
       </View>
     </ScrollView>
   );
@@ -1182,13 +1355,21 @@ function BoardScreen({ state, safeTop, onPatch }: { state: AppState; safeTop: nu
   );
 }
 
-function RecapScreen({ state, safeTop, onNav }: { state: AppState; safeTop: number; onNav: (screen: Screen) => void }) {
-  const recap = getWeeklyRecap(state.reviewHistory);
+function RecapScreen({ state, safeTop, onNav, period }: { state: AppState; safeTop: number; onNav: (screen: Screen) => void; period: "week" | "month" }) {
+  const recap = period === "month" ? getMonthlyRecap(state.reviewHistory, state.khatms) : getWeeklyRecap(state.reviewHistory, state.khatms);
   const cardRef = useRef<View>(null);
-  const weekStart = new Date();
-  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
-  const weekLabel = `Week of ${weekStart.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
-  const shareText = `Hifz Cards weekly recap: ${recap.cardsTested} cards reviewed, ${recap.ayahsRevised} āyāt revised, ${recap.newMemorised} new memorised, ${recap.effortPoints} effort points.`;
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  const periodLabel = period === "month"
+    ? now.toLocaleDateString("en-GB", { month: "long", year: "numeric" })
+    : `Week of ${weekStart.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
+  const periodName = period === "month" ? "monthly" : "weekly";
+  const periodNoun = period === "month" ? "month" : "week";
+  const consistencyText = period === "month"
+    ? `${recap.activeDays} active days this month`
+    : recap.streakMaintained ? "maintained all 7 days" : "ready to rebuild";
+  const shareText = `Hifz Cards ${periodName} recap: ${recap.cardsTested} cards reviewed, ${recap.ayahsRevised} āyāt revised, ${recap.newMemorised} new memorised, ${recap.effortPoints} effort points.`;
   const shareRecap = async () => {
     try {
       const uri = await captureRef(cardRef, { format: "png", quality: 1 });
@@ -1206,24 +1387,24 @@ function RecapScreen({ state, safeTop, onNav }: { state: AppState; safeTop: numb
     <ScrollView style={styles.recapScreen} contentContainerStyle={styles.recapContent} showsVerticalScrollIndicator={false}>
       <View style={[styles.recapHeader, { paddingTop: safeTop + 12 }]}>
         <IconButton name="arrow-back" onPress={() => onNav("progress")} dark />
-        <Text style={styles.recapHeaderText}>Weekly recap</Text>
+        <Text style={styles.recapHeaderText}>{period === "month" ? "Monthly recap" : "Weekly recap"}</Text>
         <View style={{ width: 38 }} />
       </View>
       <View ref={cardRef} collapsable={false} style={styles.recapShareArea}>
         <Panel style={styles.shareCard}>
           <View style={styles.rowBetween}>
-            <Overline>{weekLabel}</Overline>
+            <Overline>{periodLabel}</Overline>
             <View style={styles.miniLogo}>
               <Text style={styles.miniLogoText}>ﷺ</Text>
             </View>
           </View>
           <Text style={styles.bigNumber}>{recap.cardsTested}</Text>
-          <Text style={styles.shareSub}>cards reviewed this week</Text>
+          <Text style={styles.shareSub}>cards reviewed this {periodNoun}</Text>
           <Divider />
           {[
             ["radio-button-on-outline", "Weakest:", recap.weakestRange],
             ["trending-up-outline", "Improved:", recap.improved],
-            ["flame-outline", "Streak:", recap.streakMaintained ? "maintained all 7 days" : "ready to rebuild"]
+            ["flame-outline", period === "month" ? "Consistency:" : "Streak:", consistencyText]
           ].map(([icon, lead, text]) => (
             <View key={lead} style={styles.insightRow}>
               <Ionicons name={icon as never} size={18} color={colors.mint} />
@@ -1244,7 +1425,7 @@ function RecapScreen({ state, safeTop, onNav }: { state: AppState; safeTop: numb
           <RecapStat value={String(recap.effortPoints)} label="effort pts" />
         </View>
       </View>
-      <PrimaryButton label="Share recap card" icon="share-outline" onPress={shareRecap} style={{ backgroundColor: colors.gold }} textColor={colors.green} />
+      <PrimaryButton label={`Share ${periodName} recap`} icon="share-outline" onPress={shareRecap} style={{ backgroundColor: colors.gold }} textColor={colors.green} />
       <Text style={styles.effortNote}>
         Effort points reward showing up: you earn points for each card you review and each day you keep your streak — it's about
         consistency, not how much you already know.
@@ -1269,16 +1450,10 @@ function ProfileScreen({
   const communityLabel = state.communityMode === "class" ? "Class circle" : state.communityMode === "friends" ? "Friends circle" : "Private mode";
   const selectedReciter = reciterById(state.reciterId);
   const [reciterDropdownOpen, setReciterDropdownOpen] = useState(false);
-  const clearHistory = () => {
-    Alert.alert("Clear review journal?", "This removes saved local session marks on this device.", [
+  const resetSetupAndJournal = () => {
+    Alert.alert("Reset everything?", "This wipes your local plan, progress, khatms, weak spots, quiz state, and journal on this device.", [
       { text: "Cancel", style: "cancel" },
-      { text: "Clear", style: "destructive", onPress: () => onPatch({ reviewHistory: [], results: {} }) }
-    ]);
-  };
-  const restartOnboarding = () => {
-    Alert.alert("Restart onboarding?", "You can review and change your setup without losing your review journal.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Restart", onPress: () => onPatch({ screen: "onboarding", onbStep: 0 }) }
+      { text: "Reset", style: "destructive", onPress: () => onPatch({ ...initialState, screen: "onboarding", onbStep: 0 }) }
     ]);
   };
 
@@ -1301,6 +1476,13 @@ function ProfileScreen({
         </View>
       </LinearGradient>
       <View style={styles.content}>
+        <Overline>Current plan</Overline>
+        <Panel style={styles.premium}>
+          <Text style={styles.premiumMark}>ﷺ</Text>
+          <Text style={styles.premiumTitle}>Change current plan</Text>
+          <Text style={styles.premiumBody}>Adjust active hours, new memorisation reminders, revision order, days, and khatm pace in one place.</Text>
+          <PrimaryButton label="Open plan settings" onPress={() => onNav("notif")} style={{ backgroundColor: colors.gold }} textColor={colors.green} />
+        </Panel>
         <Overline>Display</Overline>
         <ArabicDisplayCard
           script={state.arabicScript ?? "uthmani"}
@@ -1350,25 +1532,13 @@ function ProfileScreen({
             </View>
             <Text style={styles.profileActionLabel}>Friends & classes</Text>
           </Pressable>
-          <Pressable style={styles.profileActionTile} onPress={restartOnboarding}>
-            <View style={styles.profileActionIcon}>
-              <Ionicons name="refresh-outline" size={20} color={colors.mint} />
-            </View>
-            <Text style={styles.profileActionLabel}>Restart setup</Text>
-          </Pressable>
-          <Pressable style={[styles.profileActionTile, styles.profileActionDanger]} onPress={clearHistory}>
+          <Pressable style={[styles.profileActionTile, styles.profileActionDanger]} onPress={resetSetupAndJournal}>
             <View style={[styles.profileActionIcon, styles.profileActionIconDanger]}>
-              <Ionicons name="trash-outline" size={20} color={colors.red} />
+              <Ionicons name="refresh-outline" size={20} color={colors.red} />
             </View>
-            <Text style={[styles.profileActionLabel, { color: colors.red }]}>Clear journal</Text>
+            <Text style={[styles.profileActionLabel, { color: colors.red }]}>Reset setup & journal</Text>
           </Pressable>
         </View>
-        <Panel style={styles.premium}>
-          <Text style={styles.premiumMark}>ﷺ</Text>
-          <Text style={styles.premiumTitle}>Change Current Plan</Text>
-          <Text style={styles.premiumBody}>Adjust active hours, new memorisation nudges, revision order and days, and your khatm pace — all in one place.</Text>
-          <PrimaryButton label="Open plan settings" onPress={() => onNav("notif")} style={{ backgroundColor: colors.gold }} textColor={colors.green} />
-        </Panel>
       </View>
     </ScrollView>
   );

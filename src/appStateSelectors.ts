@@ -14,7 +14,9 @@ export function buildDeckContext(state: AppState): DeckContext {
     revisionRanges: state.revisionRanges,
     history: state.reviewHistory,
     arabicScript: state.arabicScript,
-    revisionOrder: state.revisionOrder
+    revisionOrder: state.revisionOrder,
+    recentSurahLimit: state.recentSurahLimit,
+    recentSelectedSurahs: state.recentSelectedSurahs
   };
 }
 

@@ -1,7 +1,7 @@
 import { leaderboard } from "./data";
 import { ayahCard } from "./deck";
 import { allSurahs } from "./surahs";
-import { AppState, ReviewRecord } from "./types";
+import { AppState, KhatmRecord, ReviewRecord } from "./types";
 
 export type ReviewMode = "new" | "revision" | "weak";
 export type ReviewResult = "solid" | "shaky" | "forgot" | "finished";
@@ -129,6 +129,34 @@ function dayStart(value: string | number | Date) {
   const date = new Date(value);
   date.setHours(0, 0, 0, 0);
   return date.getTime();
+}
+
+function inWindow(timestamp: string, start: number, end = Date.now()) {
+  const time = new Date(timestamp).getTime();
+  return Number.isFinite(time) && time >= start && time <= end;
+}
+
+function surahAyahCount(number?: number) {
+  return allSurahs.find((surah) => surah.number === number)?.ayahs ?? 1;
+}
+
+function inferredRevisionAyahs(record: ReviewRecord) {
+  if (record.mode === "new") return 0;
+  if (typeof record.coveredAyahs === "number") return Math.max(0, record.coveredAyahs);
+  if (record.result === "finished") {
+    const total = surahAyahCount(record.surah);
+    if (record.ayahLabel.toLowerCase().includes("completed")) return total;
+    return Math.max(1, total - (record.ayah ?? 1) + 1);
+  }
+  return 1;
+}
+
+function periodRevisionAyahs(periodHistory: ReviewRecord[], khatms: KhatmRecord[] = [], start: number, end = Date.now()) {
+  const historyTotal = periodHistory.reduce((sum, record) => sum + inferredRevisionAyahs(record), 0);
+  const khatmTotal = khatms
+    .filter((khatm) => inWindow(khatm.completedAt, start, end))
+    .reduce((sum, khatm) => sum + Math.max(0, khatm.total || 0), 0);
+  return Math.max(historyTotal, khatmTotal);
 }
 
 function trailingNumber(label: string) {
@@ -348,10 +376,8 @@ export function getProgressStats(history: ReviewRecord[] = []) {
   };
 }
 
-export function getWeeklyRecap(history: ReviewRecord[] = []) {
-  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const weekHistory = history.filter((entry) => new Date(entry.timestamp).getTime() >= weekAgo);
-  const attempts = getAllAttempts(weekHistory);
+function getPeriodRecap(history: ReviewRecord[] = [], periodHistory: ReviewRecord[], requiredActiveDays: number, start: number, khatms: KhatmRecord[] = []) {
+  const attempts = getAllAttempts(periodHistory);
   const weakByAyah = new Set<string>();
   let weakImproved = 0;
   history.slice().reverse().forEach((entry) => {
@@ -366,13 +392,28 @@ export function getWeeklyRecap(history: ReviewRecord[] = []) {
   const strongest = attempts.find((attempt) => attempt.result === "solid" || attempt.result === "finished");
 
   return {
-    cardsTested: weekHistory.length,
-    ayahsRevised: weekHistory.filter((entry) => entry.mode !== "new").length,
-    newMemorised: weekHistory.filter((entry) => entry.mode === "new" && (entry.result === "solid" || entry.result === "finished")).length,
+    cardsTested: periodHistory.length,
+    ayahsRevised: periodRevisionAyahs(periodHistory, khatms, start),
+    newMemorised: periodHistory.filter((entry) => entry.mode === "new" && (entry.result === "solid" || entry.result === "finished")).length,
     effortPoints: attempts.reduce((sum, attempt) => sum + (attempt.result === "solid" || attempt.result === "finished" ? 3 : 1), 0),
     strongestRange: strongest ? strongest.ayahId : "No solid marks yet",
     weakestRange: weakest ? weakest.ayahId : "No weak marks yet",
     improved: `${weakImproved} weak cards turned solid`,
-    streakMaintained: weekHistory.length > 0 && new Set(weekHistory.map((entry) => dayStart(entry.timestamp))).size >= 7
+    activeDays: new Set(periodHistory.map((entry) => dayStart(entry.timestamp))).size,
+    streakMaintained: periodHistory.length > 0 && new Set(periodHistory.map((entry) => dayStart(entry.timestamp))).size >= requiredActiveDays
   };
+}
+
+export function getWeeklyRecap(history: ReviewRecord[] = [], khatms: KhatmRecord[] = []) {
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const weekHistory = history.filter((entry) => new Date(entry.timestamp).getTime() >= weekAgo);
+  return getPeriodRecap(history, weekHistory, 7, weekAgo, khatms);
+}
+
+export function getMonthlyRecap(history: ReviewRecord[] = [], khatms: KhatmRecord[] = []) {
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const monthHistory = history.filter((entry) => new Date(entry.timestamp).getTime() >= monthStart);
+  const daysSoFar = now.getDate();
+  return getPeriodRecap(history, monthHistory, Math.min(daysSoFar, 24), monthStart, khatms);
 }

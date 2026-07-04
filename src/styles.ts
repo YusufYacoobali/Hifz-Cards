@@ -33,6 +33,9 @@ export const styles = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 26
   },
+  welcomeIntro: {
+    gap: 0
+  },
   brandMark: {
     width: 54,
     height: 54,
@@ -62,6 +65,10 @@ export const styles = StyleSheet.create({
   stack: {
     gap: 12,
     marginTop: 24
+  },
+  welcomeStack: {
+    gap: 10,
+    marginTop: 16
   },
   optionCard: {
     flexDirection: "row",
@@ -624,20 +631,21 @@ export const styles = StyleSheet.create({
     color: "#fff"
   },
   darkQuote: {
-    marginTop: 22,
-    backgroundColor: colors.green
+    marginTop: 16,
+    backgroundColor: colors.green,
+    paddingVertical: 12
   },
   darkQuoteArabic: {
-    fontSize: 22,
+    fontSize: 20,
     textAlign: "center",
     color: colors.gold,
-    lineHeight: 40
+    lineHeight: 34
   },
   darkQuoteText: {
     color: "#bcd8cf",
     textAlign: "center",
     fontSize: 12,
-    marginTop: 8,
+    marginTop: 4,
     lineHeight: 17
   },
   footer: {
@@ -708,7 +716,7 @@ export const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "android" ? 124 : 108
   },
   homeScrollPad: {
-    paddingBottom: Platform.OS === "android" ? 196 : 184
+    paddingBottom: Platform.OS === "android" ? 124 : 108
   },
   homeStickyBar: {
     position: "absolute",
@@ -719,6 +727,9 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.paper,
     borderTopWidth: 1,
     borderTopColor: colors.line
+  },
+  todayAction: {
+    marginTop: 14
   },
   hero: {
     paddingTop: 30,
@@ -1189,6 +1200,10 @@ export const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 14
+  },
+  recentPickSelected: {
+    borderColor: colors.mint,
+    backgroundColor: colors.mintPale
   },
   revisionPickMain: {
     flex: 1,
@@ -1769,6 +1784,95 @@ export const styles = StyleSheet.create({
   doneSub: {
     color: colors.muted,
     fontSize: 14
+  },
+  celebrationOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 59, 48, 0.46)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24
+  },
+  celebrationCard: {
+    width: "100%",
+    maxWidth: 390,
+    borderRadius: 28,
+    backgroundColor: colors.card,
+    padding: 24,
+    alignItems: "center",
+    overflow: "hidden",
+    ...heavyShadow
+  },
+  celebrationHalo: {
+    position: "absolute",
+    top: 28,
+    width: 148,
+    height: 148,
+    borderRadius: 74,
+    backgroundColor: colors.gold
+  },
+  celebrationBurst: {
+    width: 118,
+    height: 118,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8
+  },
+  celebrationRay: {
+    position: "absolute",
+    width: 8,
+    height: 112,
+    borderRadius: 999,
+    backgroundColor: "rgba(233, 217, 168, 0.42)"
+  },
+  celebrationMedal: {
+    width: 86,
+    height: 86,
+    borderRadius: 43,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 5,
+    borderColor: "#fff8df"
+  },
+  celebrationTitle: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: colors.ink,
+    textAlign: "center"
+  },
+  celebrationSubtitle: {
+    marginTop: 8,
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center"
+  },
+  celebrationStats: {
+    width: "100%",
+    marginTop: 18,
+    gap: 8
+  },
+  celebrationStat: {
+    overflow: "hidden",
+    borderRadius: 14,
+    backgroundColor: colors.mintPale,
+    color: colors.mintDark,
+    fontSize: 13,
+    fontWeight: "900",
+    textAlign: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 12
+  },
+  celebrationDua: {
+    color: colors.goldDark,
+    fontWeight: "800",
+    fontSize: 13,
+    marginTop: 16,
+    textAlign: "center"
+  },
+  celebrationButton: {
+    width: "100%",
+    marginTop: 18,
+    backgroundColor: colors.gold
   },
   resultBox: {
     flex: 1,

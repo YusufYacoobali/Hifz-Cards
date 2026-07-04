@@ -160,22 +160,70 @@ export function remainingRevisionRoundItems(state: AppState) {
   return revisionRoundItems(state).filter((item) => item.doneAyahs < item.totalAyahs);
 }
 
+function sameLocalDay(iso: string, day: Date) {
+  const time = new Date(iso);
+  return !Number.isNaN(time.getTime()) && time.toDateString() === day.toDateString();
+}
+
+function newAyatReviewedToday(state: AppState, today: Date) {
+  return (state.reviewHistory ?? []).filter((record) => record.mode === "new" && sameLocalDay(record.timestamp, today)).length;
+}
+
+export function dailyPracticePlan(state: AppState, today = new Date()) {
+  const dateKey = today.toDateString();
+  const newTarget = Math.max(1, state.perDay || 1);
+  const newDone = newAyatReviewedToday(state, today);
+  const revisionTarget = Math.max(1, recommendedRevisionAyat(state.revisionRanges, state.revisionRoundDays));
+  const revisionDone = state.revisionDoneDate === dateKey ? Math.max(0, state.revisionDoneToday ?? 0) : 0;
+  const newEnabled = state.sabaqOn;
+  const revisionEnabled = state.revisionOn;
+  const newRemaining = newEnabled ? Math.max(0, newTarget - newDone) : 0;
+  const revisionRemaining = revisionEnabled ? Math.max(0, revisionTarget - revisionDone) : 0;
+  const hasActiveGoal = newEnabled || revisionEnabled;
+  const complete = hasActiveGoal && (!newEnabled || newRemaining === 0) && (!revisionEnabled || revisionRemaining === 0);
+  const targetKey = `new-${newEnabled ? newTarget : "off"}:revision-${revisionEnabled ? revisionTarget : "off"}`;
+
+  return {
+    dateKey,
+    new: {
+      enabled: newEnabled,
+      target: newTarget,
+      done: newDone,
+      remaining: newRemaining,
+      complete: !newEnabled || newRemaining === 0
+    },
+    revision: {
+      enabled: revisionEnabled,
+      target: revisionTarget,
+      done: revisionDone,
+      remaining: revisionRemaining,
+      complete: !revisionEnabled || revisionRemaining === 0
+    },
+    totalDone: (newEnabled ? newDone : 0) + (revisionEnabled ? revisionDone : 0),
+    hasActiveGoal,
+    complete,
+    celebrationKeys: {
+      new: `${dateKey}:${targetKey}:new`,
+      revision: `${dateKey}:${targetKey}:revision`,
+      both: `${dateKey}:${targetKey}:both`
+    }
+  };
+}
+
 export function revisionTotals(state: AppState) {
+  const plan = dailyPracticePlan(state);
   const items = revisionRoundItems(state);
   const total = items.reduce((sum, item) => sum + item.totalAyahs, 0);
   const done = items.reduce((sum, item) => sum + item.doneAyahs, 0);
-  const dailyTarget = Math.max(1, state.revisionLoad || recommendedRevisionAyat(state.revisionRanges, state.revisionRoundDays));
-  const doneToday = state.revisionDoneDate === new Date().toDateString() ? state.revisionDoneToday ?? 0 : 0;
-  const remainingToday = Math.max(0, dailyTarget - doneToday);
   const pct = total ? Math.round((done / total) * 100) : 0;
   return {
     total,
     done,
     remaining: Math.max(0, total - done),
     rounds: state.revisionRounds ?? 0,
-    dailyTarget,
-    doneToday,
-    remainingToday,
+    dailyTarget: plan.revision.target,
+    doneToday: plan.revision.done,
+    remainingToday: plan.revision.remaining,
     pct
   };
 }

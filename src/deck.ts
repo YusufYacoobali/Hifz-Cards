@@ -13,6 +13,8 @@ export type DeckContext = {
   history?: ReviewRecord[];
   arabicScript?: ArabicScript;
   revisionOrder?: RevisionOrder;
+  recentSurahLimit?: number;
+  recentSelectedSurahs?: number[];
 };
 
 // How many new ÄyÄt to surface in one sabaq session, counting from the start point.
@@ -132,34 +134,45 @@ export function buildRevisionDeck(
 
 export function buildRecentRevisionDeck(
   history: ReviewRecord[] = [],
-  newRange: MemorisationRange,
-  script: ArabicScript = "uthmani"
+  ranges: SurahRange[] = [],
+  script: ArabicScript = "uthmani",
+  selectedSurahs: number[] = [],
+  limit = 3
 ): RevisionFlow[] {
+  const known = buildRevisionDeck(ranges, script, "forward");
+  const knownBySurah = new Map(known.map((flow) => [flow.surah ?? 0, flow]));
+  const max = Math.max(1, limit || 3);
   const seen = new Set<number>();
   const numbers: number[] = [];
-  history.forEach((record) => {
+
+  selectedSurahs.forEach((surah) => {
+    if (!knownBySurah.has(surah) || seen.has(surah)) return;
+    seen.add(surah);
+    numbers.push(surah);
+  });
+
+  if (!numbers.length) history.forEach((record) => {
     if (record.mode !== "new" || !record.surah) return;
     if (record.result !== "solid" && record.result !== "finished") return;
+    if (!knownBySurah.has(record.surah)) return;
     if (seen.has(record.surah)) return;
     seen.add(record.surah);
     numbers.push(record.surah);
   });
-  const currentNewSurah = surahNumberOf(newRange.surah);
-  if (currentNewSurah && !seen.has(currentNewSurah)) numbers.push(currentNewSurah);
-  return numbers
-    .slice(0, 3)
-    .map((number) => {
-      const meta = surahMeta(number);
-      const passage = surahVerses(number, script);
-      if (!passage.length) return null;
-      return {
-        start: 1,
-        surah: number,
-        label: meta ? `${number} · ${meta.english}` : `Surah ${number}`,
-        passage
-      } as RevisionFlow;
-    })
-    .filter(Boolean) as RevisionFlow[];
+
+  if (!numbers.length) {
+    known
+      .slice()
+      .reverse()
+      .forEach((flow) => {
+        const surah = flow.surah ?? 0;
+        if (!surah || seen.has(surah)) return;
+        seen.add(surah);
+        numbers.push(surah);
+      });
+  }
+
+  return numbers.slice(0, max).map((number) => knownBySurah.get(number)).filter(Boolean) as RevisionFlow[];
 }
 
 export function buildQuizDeck(
@@ -209,8 +222,8 @@ export function getDeck(mode: SessionMode, ctx?: DeckContext): PracticeItem[] {
   }
   if (mode === "recent") {
     if (!ctx) return revisionFlows.slice(0, 3);
-    const built = buildRecentRevisionDeck(ctx.history, ctx.newRange, ctx.arabicScript);
-    return built.length ? built : revisionFlows.slice(0, 3);
+    const built = buildRecentRevisionDeck(ctx.history, ctx.revisionRanges, ctx.arabicScript, ctx.recentSelectedSurahs, ctx.recentSurahLimit);
+    return built.length ? built : buildRevisionDeck(ctx.revisionRanges, ctx.arabicScript, "forward").slice(0, ctx.recentSurahLimit ?? 3);
   }
   if (mode === "revision") {
     if (!ctx) return revisionFlows;

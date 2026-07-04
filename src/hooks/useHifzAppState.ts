@@ -178,6 +178,9 @@ export function useHifzAppState() {
     const item = deck[state.cardIndex];
     const surahNum = isRevisionFlow(item) ? item.surah ?? 0 : surahNumberOf(item.surah ?? "");
     const ayahNum = isRevisionFlow(item) ? item.start : item.num;
+    const flowEnd = isRevisionFlow(item) ? item.passage[item.passage.length - 1]?.num ?? item.start : 0;
+    const resume = isRevisionFlow(item) ? Math.max(item.start, state.revisionResumeAyah || item.start) : 0;
+    const coveredAyahs = isRevisionFlow(item) && status === "finished" ? Math.max(1, flowEnd - resume + 1) : undefined;
     const key = isRevisionFlow(item) ? `w${item.surah ?? item.start}` : `${item.surah ?? ""}:${item.num}`;
     const ayahLabel = isRevisionFlow(item)
       ? `${item.label} · start ${item.start}`
@@ -189,7 +192,8 @@ export function useHifzAppState() {
       result: status,
       timestamp: new Date().toISOString(),
       surah: surahNum,
-      ayah: ayahNum
+      ayah: ayahNum,
+      coveredAyahs
     };
     const next: Partial<AppState> = {
       results: { ...state.results, [key]: status },
@@ -209,8 +213,6 @@ export function useHifzAppState() {
         next.revisionRounds = (state.revisionRounds ?? 0) + 1;
         next.khatms = [buildKhatmRecord(state, deck), ...(state.khatms ?? [])].slice(0, 50);
       }
-      const flowEnd = item.passage[item.passage.length - 1]?.num ?? item.start;
-      const resume = Math.max(item.start, state.revisionResumeAyah || item.start);
       Object.assign(next, dailyRevisionFields(state, flowEnd - resume + 1));
     }
     patch(next);
@@ -233,7 +235,8 @@ export function useHifzAppState() {
       result: "finished",
       timestamp: new Date().toISOString(),
       surah: item.surah ?? 0,
-      ayah: flowEnd
+      ayah: flowEnd,
+      coveredAyahs: item.passage.length
     };
     patch({
       revisionCompletedSurahs: allDone ? {} : completedSurahs,
@@ -314,7 +317,8 @@ export function useHifzAppState() {
       result: `stuck@${ayah}`,
       timestamp: new Date().toISOString(),
       surah,
-      ayah
+      ayah,
+      coveredAyahs: covered > 0 ? covered : undefined
     };
     patch({
       ...checkpoint,
@@ -432,8 +436,13 @@ function surahNumberOf(label: string) {
 }
 
 function migrateSavedState(saved: Partial<AppState>): Partial<AppState> {
-  const legacyRevisionOrder = (saved as unknown as { revisionOrder?: string }).revisionOrder;
-  const normalized: Partial<AppState> = legacyRevisionOrder === "select" ? { ...saved, revisionOrder: "forward" } : saved;
+  const { lastCelebratedDailyGoalKey: _legacyCelebrationKey, ...withoutLegacyCelebration } = saved as Partial<AppState> & { lastCelebratedDailyGoalKey?: string };
+  const base: Partial<AppState> = {
+    ...withoutLegacyCelebration,
+    celebratedDailyGoalKeys: Array.isArray(withoutLegacyCelebration.celebratedDailyGoalKeys) ? withoutLegacyCelebration.celebratedDailyGoalKeys : []
+  };
+  const legacyRevisionOrder = (base as unknown as { revisionOrder?: string }).revisionOrder;
+  const normalized: Partial<AppState> = legacyRevisionOrder === "select" ? { ...base, revisionOrder: "forward" } : base;
   const oldDefaultRange =
     normalized.revisionRanges?.length === 1 &&
     normalized.revisionRanges[0].id === "rev-default" &&
@@ -442,7 +451,6 @@ function migrateSavedState(saved: Partial<AppState>): Partial<AppState> {
   if (!oldDefaultRange) return normalized;
   return {
     ...normalized,
-    revisionLoad: normalized.revisionLoad === 30 ? 5 : normalized.revisionLoad,
     revisionRanges: [{ id: "rev-default", fromSurah: 1, toSurah: 1, label: "1 · Al-Fatihah" }],
     revisionProgressIndex: 0,
     revisionProgressAyah: 1,

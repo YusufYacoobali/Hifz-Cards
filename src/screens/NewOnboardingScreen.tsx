@@ -45,6 +45,7 @@ export function NewOnboardingScreen({
   const stepIndex = Math.min(state.onbStep, steps.length - 1);
   const step = steps[stepIndex];
   const isLast = stepIndex >= steps.length - 1;
+  const revisionDailyTarget = recommendedRevisionAyat(state.revisionRanges, state.revisionRoundDays);
 
   const goNext = () => {
     if (isLast) {
@@ -68,12 +69,24 @@ export function NewOnboardingScreen({
 
   const updateRevisionRange = (id: string, fromSurah: number, toSurah: number) => {
     const revisionRanges = rebalanceRevisionRanges(state.revisionRanges, id, fromSurah, toSurah);
-    onPatch({ revisionRanges, revisionProgressIndex: 0, revisionProgressAyah: 1, revisionCompletedSurahs: {} });
+    onPatch({
+      revisionRanges,
+      revisionProgressIndex: 0,
+      revisionProgressAyah: 1,
+      revisionCompletedSurahs: {}
+    });
   };
   const addRevisionRange = () => {
     const free = nextFreeRange(state.revisionRanges) ?? { from: 114, to: 114 };
     const range = makeSurahRange(free.from, free.to, `rev-${Date.now()}`);
-    onPatch({ revisionRanges: [...state.revisionRanges, range], revisionTargetId: range.id, revisionProgressIndex: 0, revisionProgressAyah: 1, revisionCompletedSurahs: {} });
+    const revisionRanges = [...state.revisionRanges, range];
+    onPatch({
+      revisionRanges,
+      revisionTargetId: range.id,
+      revisionProgressIndex: 0,
+      revisionProgressAyah: 1,
+      revisionCompletedSurahs: {}
+    });
   };
   const removeRevisionRange = (id: string) => {
     if (state.revisionRanges.length <= 1) return;
@@ -106,32 +119,31 @@ export function NewOnboardingScreen({
         keyboardShouldPersistTaps="handled"
       >
         {step === "welcome" && (
-          <View>
-            <Title>Memorise with{"\n"}gentle recall</Title>
+          <View style={styles.welcomeIntro}>
+            <Title>Your Qur'an{"\n"}revision rhythm</Title>
             <Muted>
-              Hifz Cards uses spaced retrieval: small, well-timed prompts that ask you to recall before you re-read, so memorisation
-              strengthens without turning your day into noise.
+              Customise gentle reminders throughout the day for new memorisation and revision, then test yourself with cards that help weak ayat come back at the right time.
             </Muted>
-            <Stack>
+            <View style={[styles.stack, styles.welcomeStack]}>
               <InfoRow
                 icon="leaf-outline"
-                title="New memorisation"
-                text="Example: a sabaq nudge every 2 hours asks for the next new āyah, then cards help you mark solid, shaky, or forgotten."
+                title="You choose the rhythm"
+                text="Set how often the app reminds you, from short recall nudges to daily revision."
               />
               <InfoRow
                 icon="repeat-outline"
-                title="Revision"
-                text="Example: a revision nudge every 4 hours starts from your known range, prioritising weak spots and continuing where you left off."
+                title="Separate plans"
+                text="Keep new memorisation and revision on their own schedules, days, and active hours."
               />
               <InfoRow
                 icon="albums-outline"
-                title="Swipeable test cards"
-                text="Recall first, reveal only when needed, then repeat weak āyāt sooner and strong āyāt later."
+                title="Cards that adapt"
+                text="Swipe, reveal, and mark confidence so shaky ayat stay close and solid ones move on."
               />
-            </Stack>
+            </View>
             <Panel style={styles.darkQuote}>
-              <Arabic style={styles.darkQuoteArabic}>وَلَقَدْ يَسَّرْنَا ٱلْقُرْءَانَ لِلذِّكْرِ</Arabic>
-              <Text style={styles.darkQuoteText}>And We have certainly made the Qur'an easy to remember. · 54:17</Text>
+              <Arabic style={styles.darkQuoteArabic}>فَٱذْكُرُونِىٓ أَذْكُرْكُمْ</Arabic>
+              <Text style={styles.darkQuoteText}>So remember Me; I will remember you. · 2:152</Text>
             </Panel>
           </View>
         )}
@@ -140,7 +152,7 @@ export function NewOnboardingScreen({
           <View>
             <Title>What should{"\n"}we support?</Title>
             <Muted>
-              Pick what you need right now. We will only set up the services that fit your choice — you can change this later.
+              Pick what you need right now. We will only set up the services that fit your choice. You can change this later.
             </Muted>
             <Stack>
               <OptionCard
@@ -171,7 +183,7 @@ export function NewOnboardingScreen({
         {step === "newFocus" && (
           <View>
             <Title>Where are you{"\n"}starting from?</Title>
-            <Muted>Pick the sūrah and āyah you are starting new memorisation from — we'll keep moving you forward from there.</Muted>
+            <Muted>Pick the sūrah and āyah you are starting new memorisation from. We'll keep moving you forward from there.</Muted>
             <Panel style={styles.focusPanel}>
               <View style={styles.rowBetween}>
                 <View style={styles.flex}>
@@ -199,19 +211,20 @@ export function NewOnboardingScreen({
           <View>
             <Title>New memorisation{"\n"}reminders</Title>
             <Muted>
-              This is for sabaq only. A common starting rhythm is every 2 hours during your active window: short, repeated recall of
-              the next new āyah before it fades.
+              These notifications are for repetitive reinforcement of new memorisation: recall the next ayah often, before it fades.
             </Muted>
             <Stack>
               <ServiceScheduleCard
                 icon="leaf-outline"
                 title="Today's memorisation"
-                subtitle={`${state.perDay} āyāt per day`}
+                subtitle="For the new ayah or surah you are learning"
                 enabled={state.sabaqOn}
                 onToggle={() => onPatch({ sabaqOn: !state.sabaqOn })}
                 frequency={state.sabaqFreq}
+                frequencyLabel="New ayah reminder frequency"
                 onFrequency={(sabaqFreq) => onPatch({ sabaqFreq, freq: sabaqFreq })}
                 days={state.sabaqDays}
+                daysLabel="New ayah reminder days"
                 onToggleDay={(day) => onPatch({ sabaqDays: { ...state.sabaqDays, [day]: !state.sabaqDays[day] } })}
               />
               <DailyTargetCard
@@ -219,7 +232,7 @@ export function NewOnboardingScreen({
                 title="Daily new target"
                 value={state.perDay}
                 unit="ayat/day"
-                note={`Recommended: ${recommendedNewAyat(state.newRange)} āyāt/day for this sūrah`}
+                note={`How many new ayat to attempt each day. Recommended: ${recommendedNewAyat(state.newRange)}`}
                 min={1}
                 max={20}
                 step={1}
@@ -233,8 +246,7 @@ export function NewOnboardingScreen({
           <View>
             <Title>What have you{"\n"}already memorised?</Title>
             <Muted>
-              Add the sūrah ranges you know — e.g. An-Naba → An-Nās, or Al-Fātiḥah → Al-Baqarah. They can be separate blocks;
-              one full revision khatm means completing all of these known sections.
+              Add the surah ranges you already know. Revision cards and revision notifications will only pull from these sections.
             </Muted>
             <Stack>
               {state.revisionRanges.map((range, index) => (
@@ -257,19 +269,20 @@ export function NewOnboardingScreen({
           <View>
             <Title>Revision{"\n"}reminders</Title>
             <Muted>
-              Revision has its own schedule. For example, if sabaq is every 2 hours, revision might be every 4 hours: less frequent,
-              but deeper, so older hifz keeps getting tested.
+              These notifications reinforce older memorisation. Pick the rhythm, then set how quickly you want to complete a full revision khatm.
             </Muted>
             <Stack>
               <ServiceScheduleCard
                 icon="repeat-outline"
                 title="Revision"
-                subtitle={`${state.revisionLoad} āyāt per day`}
+                subtitle={`${revisionDailyTarget} ayat per day from your known sections`}
                 enabled={state.revisionOn}
                 onToggle={() => onPatch({ revisionOn: !state.revisionOn })}
                 frequency={state.revisionFreq}
+                frequencyLabel="Revision reminder frequency"
                 onFrequency={(revisionFreq) => onPatch({ revisionFreq })}
                 days={state.revisionDays}
+                daysLabel="Revision reminder days"
                 onToggleDay={(day) => onPatch({ revisionDays: { ...state.revisionDays, [day]: !state.revisionDays[day] } })}
               />
               <Panel>
@@ -279,7 +292,7 @@ export function NewOnboardingScreen({
                   </View>
                   <View style={styles.flex}>
                     <Text style={styles.cardTitle}>Revision order</Text>
-                    <Text style={styles.cardSubtitle}>How to move through what you know — you always resume where you left off.</Text>
+                    <Text style={styles.cardSubtitle}>How to move through what you know. You always resume where you left off.</Text>
                   </View>
                 </View>
                 <Segmented
@@ -301,8 +314,7 @@ export function NewOnboardingScreen({
                 options={[3, 5, 7, 10, 12, 14, 30]}
                 onChange={(revisionRoundDays) =>
                   onPatch({
-                    revisionRoundDays,
-                    revisionLoad: recommendedRevisionAyat(state.revisionRanges, revisionRoundDays)
+                    revisionRoundDays
                   })
                 }
               />
@@ -313,7 +325,7 @@ export function NewOnboardingScreen({
         {step === "schedule" && (
           <View>
             <Title>When can we{"\n"}reach you?</Title>
-            <Muted>Both reminder services stay inside these hours. The aim is consistency without fatigue, so prompts pause outside your real availability.</Muted>
+            <Muted>Active hours apply to both new memorisation and revision notifications. Prompts pause outside this window.</Muted>
             <ActiveHoursPanel state={state} onPatch={onPatch} />
             <Panel style={[styles.settingRow, styles.scheduleSpacer]}>
               <View style={styles.iconTile}>
@@ -364,7 +376,7 @@ export function NewOnboardingScreen({
                   ))}
                   <Text style={styles.summaryMeta}>
                     {state.revisionOn
-                      ? `Reminders ${state.revisionFreq} · ${state.revisionLoad} āyāt/day · ${activeDayCount(state.revisionDays)} days a week`
+                      ? `Reminders ${state.revisionFreq} · ${revisionDailyTarget} āyāt/day · ${activeDayCount(state.revisionDays)} days a week`
                       : "Reminders off"}
                   </Text>
                 </Panel>
@@ -392,10 +404,10 @@ export function NewOnboardingScreen({
               />
               <OptionCard
                 icon="people-outline"
-                title="Add friends later"
-                subtitle="Use the Circle tab when you are ready"
-                selected={state.communityMode === "friends"}
-                onPress={() => onPatch({ communityMode: "friends", boardTab: "friends" })}
+                title="Friends & classes"
+                subtitle="Coming soon - keep your plan solo for now"
+                selected={false}
+                onPress={() => onPatch({ communityMode: "solo" })}
               />
             </Stack>
           </View>

@@ -1,4 +1,4 @@
-﻿export type Screen = "onboarding" | "home" | "notif" | "modes" | "session" | "quizSetup" | "quizSession" | "progress" | "board" | "recap" | "profile" | "khatms";
+﻿export type Screen = "onboarding" | "home" | "notif" | "modes" | "session" | "quizSetup" | "quizSession" | "progress" | "board" | "recap" | "monthlyRecap" | "profile" | "khatms";
 
 export type KhatmRecord = {
   id: string;
@@ -27,6 +27,7 @@ export type ReviewRecord = {
   timestamp: string;
   surah?: number;
   ayah?: number;
+  coveredAyahs?: number;
 };
 
 export type QuizQuestion = {
@@ -77,7 +78,6 @@ export type AppState = {
   ayahTo: number;
   perDay: number;
   knownUpTo: number;
-  revisionLoad: number;
   revisionRoundDays: number;
   freq: string;
   newRange: MemorisationRange;
@@ -114,7 +114,10 @@ export type AppState = {
   revisionOrder: RevisionOrder;
   revisionDoneToday: number;
   revisionDoneDate: string;
+  celebratedDailyGoalKeys: string[];
   khatms: KhatmRecord[];
+  recentSurahLimit: number;
+  recentSelectedSurahs: number[];
   quizQuestionCount: number;
   quizPromptMode: QuizPromptMode;
   quizCustomRange: boolean;
@@ -147,7 +150,6 @@ export const initialState: AppState = {
   ayahTo: 30,
   perDay: 3,
   knownUpTo: 11,
-  revisionLoad: 5,
   revisionRoundDays: 7,
   freq: "30 min",
   newRange: {
@@ -206,7 +208,10 @@ export const initialState: AppState = {
   revisionOrder: "forward",
   revisionDoneToday: 0,
   revisionDoneDate: "",
+  celebratedDailyGoalKeys: [],
   khatms: [],
+  recentSurahLimit: 3,
+  recentSelectedSurahs: [],
   quizQuestionCount: 5,
   quizPromptMode: "text",
   quizCustomRange: false,
