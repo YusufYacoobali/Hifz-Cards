@@ -107,9 +107,6 @@ export function NewOnboardingScreen({
       >
         {step === "welcome" && (
           <View>
-            <View style={styles.brandMark}>
-              <Text style={styles.brandMarkText}>ق</Text>
-            </View>
             <Title>Memorise with{"\n"}gentle recall</Title>
             <Muted>
               Hifz Cards uses spaced retrieval: small, well-timed prompts that ask you to recall before you re-read, so memorisation

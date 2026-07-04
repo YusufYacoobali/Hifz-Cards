@@ -482,19 +482,6 @@ function QuizSetupScreen({
         />
       </Panel>
 
-      {state.quizPromptMode !== "audio" && (
-        <Panel>
-          <Text style={styles.sectionTitle}>Recitation button</Text>
-          <Text style={styles.cardSubtitle}>Keep a playback button on each text question, or make the quiz fully visual.</Text>
-          <Segmented
-            values={["on", "off"]}
-            labels={["Show", "Hide"]}
-            active={state.quizReciteButton === false ? "off" : "on"}
-            onChange={(value) => onPatch({ quizReciteButton: value === "on" })}
-          />
-        </Panel>
-      )}
-
       <Panel>
         <Text style={styles.sectionTitle}>Range</Text>
         <Text style={styles.cardSubtitle}>{state.quizCustomRange ? "Use a temporary range just for this quiz." : `Default: your revision range (${revisionSummary || "not set"}).`}</Text>
@@ -545,8 +532,16 @@ function QuizSessionScreen({
   const solid = values.filter((value) => value === "solid").length;
   const shaky = values.filter((value) => value === "shaky").length;
   const forgot = values.filter((value) => value === "forgot").length;
+  const [hintVisible, setHintVisible] = useState(false);
 
   useEffect(() => () => stopAyah(), []);
+  useEffect(() => {
+    setHintVisible(false);
+  }, [index]);
+  useEffect(() => {
+    if (state.quizPhase !== "running" || state.quizPromptMode !== "audio" || !question) return;
+    playAyah(question.surah, question.ayah, state.reciterId);
+  }, [state.quizPhase, state.quizPromptMode, state.reciterId, question?.id]);
 
   if (state.quizPhase === "done" || !question) {
     return (
@@ -578,7 +573,7 @@ function QuizSessionScreen({
         <Text style={[styles.counterPill, styles.revisionTitlePill]} numberOfLines={1}>QUIZ · {index + 1}/{total}</Text>
         <IconButton name="settings-outline" onPress={() => onPatch({ screen: "quizSetup" })} />
       </View>
-      <Text style={styles.sessionSubtitle}>{question.label} · start at āyah {question.ayah}</Text>
+      <Text style={styles.sessionSubtitle}>Continue from the prompt. Use hint only if you need your place.</Text>
       <View style={styles.sessionProgressTrack}>
         <LinearGradient colors={[colors.mint, "#6aa991"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.sessionProgress, { width: progress }]} />
       </View>
@@ -588,7 +583,17 @@ function QuizSessionScreen({
         <View style={[styles.practiceCard, styles.quizPracticeCard]}>
           <View style={styles.quizCardBody}>
             <Text style={styles.modeChip}>CONTINUE FOR 5 ĀYĀT</Text>
-            <Text style={styles.quizInstruction}>Recite from āyah {question.ayah} to āyah {question.continueTo}, then mark the attempt.</Text>
+            <Text style={styles.quizInstruction}>Recite this prompt, continue for the next 5 āyāt, then mark the attempt.</Text>
+            <Pressable style={styles.quizHintButton} onPress={() => setHintVisible((visible) => !visible)}>
+              <Ionicons name={hintVisible ? "eye-off-outline" : "help-circle-outline"} size={16} color={colors.mint} />
+              <Text style={styles.quizHintText}>{hintVisible ? "Hide hint" : "Show hint"}</Text>
+            </Pressable>
+            {hintVisible && (
+              <View style={styles.quizHintPanel}>
+                <Text style={styles.cardSubtitle}>{question.label}</Text>
+                <Text style={styles.greenStrong}>Start āyah {question.ayah} · continue to {question.continueTo}</Text>
+              </View>
+            )}
             {state.quizPromptMode === "audio" ? (
               <View style={styles.quizAudioOnly}>
                 <Ionicons name="volume-high-outline" size={34} color={colors.mint} />
@@ -602,14 +607,12 @@ function QuizSessionScreen({
               </>
             )}
           </View>
-          {(state.quizPromptMode === "audio" || state.quizReciteButton !== false) && (
-            <Pressable style={styles.audioButton} onPress={() => playAyah(question.surah, question.ayah, state.reciterId)}>
-              <View style={styles.audioIcon}>
-                <Ionicons name="play" size={12} color="#fff" />
-              </View>
-              <Text style={styles.audioText}>Play recitation</Text>
-            </Pressable>
-          )}
+          <Pressable style={styles.audioButton} onPress={() => playAyah(question.surah, question.ayah, state.reciterId)}>
+            <View style={styles.audioIcon}>
+              <Ionicons name={state.quizPromptMode === "audio" ? "repeat" : "play"} size={12} color="#fff" />
+            </View>
+            <Text style={styles.audioText}>{state.quizPromptMode === "audio" ? "Repeat audio" : "Play recitation"}</Text>
+          </Pressable>
         </View>
       </View>
       <View style={[styles.markRow, { bottom: actionBottom }]}>
@@ -890,12 +893,12 @@ function SessionScreen({
         </View>
       ) : reading ? (
         <View style={[styles.markRow, { bottom: actionBottom }]}>
-          <View style={styles.readActionStack}>
+          <View style={styles.markRowInner}>
             <PrimaryButton
               label={readAlreadyWeak ? "In weak" : "Add to weak"}
               icon={readAlreadyWeak ? undefined : "bookmark-outline"}
               onPress={() => onAddWeak(currentSurahNumber, state.revisionReadAyah, isRevisionFlow(item) ? item.label : "")}
-              style={readAlreadyWeak ? styles.weakActionDone : styles.weakActionButton}
+              style={[readAlreadyWeak ? styles.weakActionDone : styles.weakActionButton, styles.readWeakButton]}
               textColor={colors.green}
             />
             <PrimaryButton

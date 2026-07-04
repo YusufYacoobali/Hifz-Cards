@@ -105,7 +105,7 @@ export function NotificationsScreen({
         <ReminderCard
           icon="leaf-outline"
           title="New reminders"
-          subtitle="New sabaq · one āyah at a time"
+          subtitle="New surah - one ayah at a time"
           quote="Recite this āyah, then continue to the next one."
           enabled={state.sabaqOn}
           onToggle={() => onPatch({ sabaqOn: !state.sabaqOn })}
@@ -170,7 +170,7 @@ export function NotificationsScreen({
         <ReminderCard
           icon="repeat-outline"
           title="Revision reminders"
-          subtitle="Older hifz · recite in flow"
+          subtitle="Known revision - recite in flow"
           quote="Start from this āyah. How far can you continue?"
           enabled={state.revisionOn}
           onToggle={() => onPatch({ revisionOn: !state.revisionOn })}

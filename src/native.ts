@@ -3,7 +3,6 @@ import * as Notifications from "expo-notifications";
 import * as StoreReview from "expo-store-review";
 import { AppState as RNAppState, Platform } from "react-native";
 import { buildNewDeck, buildRevisionDeck } from "./deck";
-import { firstWords } from "./quran";
 import { ActiveHoursMode, ArabicScript, DailyActiveHours, Days, MemorisationRange, RevisionOrder, SessionMode, SurahRange } from "./types";
 
 export type ReminderSettings = {
@@ -37,6 +36,90 @@ export type ReminderSettings = {
 const REVIEW_KEY = "hifz:last-native-review";
 const NOTIFICATION_CACHE_KEY = "hifz:last-notification-plan";
 
+const sabaqNotificationTitles = [
+  "A small new-surah moment is ready",
+  "Your next ayah is waiting",
+  "Keep your new memorisation warm",
+  "A gentle Qur'an nudge",
+  "Five quiet minutes for new memorisation",
+  "Your next recall is ready",
+  "A fresh ayah, one calm pass",
+  "Stay close to today's new ayah",
+  "A little memorisation now",
+  "Your new-surah card is ready",
+  "A soft prompt for new memorisation",
+  "Keep the next ayah fresh",
+  "A quick recall window",
+  "Your memorisation rhythm is here",
+  "One ayah, one focused moment",
+  "Time for a light new-ayah check",
+  "Your new memorisation is waiting",
+  "A calm step forward"
+];
+
+const sabaqNotificationBodies = [
+  "Five minutes now can keep it fresh.",
+  "Open a card and see how much comes back.",
+  "A short recall now is enough.",
+  "One focused pass, then carry on.",
+  "Keep it gentle: recall first, reveal if needed.",
+  "This is a good moment to strengthen today's ayah.",
+  "A tiny session still counts.",
+  "Come back while it is still close.",
+  "Test the next ayah without pressure.",
+  "Your future self will thank you for this small pass.",
+  "A quiet recall keeps the chain warm.",
+  "No rush. Just one card.",
+  "Lock in a little more of today's new memorisation.",
+  "A short attempt is better than waiting for perfect time.",
+  "See if the opening words are still there.",
+  "Keep the new ayah moving from short-term to strong.",
+  "A gentle review now makes later easier.",
+  "Open the app and continue where you left off."
+];
+
+const revisionNotificationTitles = [
+  "Your Qur'an revision is waiting",
+  "Keep your revision fresh",
+  "A soft revision reminder",
+  "Five minutes now keeps it fresh",
+  "Your next revision pass is ready",
+  "Come back to what you know",
+  "A calm moment for revision",
+  "Your memorisation needs a light pass",
+  "A quick revision check",
+  "Stay connected to your revision",
+  "A little revision goes far",
+  "Your khatm cycle is waiting",
+  "Keep the old memorisation alive",
+  "One section, gently",
+  "A quiet check-in for revision",
+  "Your next recall point is ready",
+  "Return before it fades",
+  "Strengthen what you already know"
+];
+
+const revisionNotificationBodies = [
+  "Open where you left off and see how far you can go.",
+  "A short pass now keeps the path familiar.",
+  "No pressure. Recite what comes, then mark your stop.",
+  "Keep the chain warm with a quick recall.",
+  "Start from your saved place and continue gently.",
+  "A few ayat now can stop revision getting heavy.",
+  "Your next section is ready when you are.",
+  "One calm attempt is enough to keep it moving.",
+  "Test from memory first; the card will help if needed.",
+  "A small revision window is open.",
+  "Come back to your current place for a few minutes.",
+  "Keep today's revision light and consistent.",
+  "This is a good time to refresh what you know.",
+  "Short, steady revision beats a long delay.",
+  "Your saved checkpoint is ready.",
+  "A gentle pass now protects yesterday's effort.",
+  "Open the app and continue your revision.",
+  "Five quiet minutes can keep it settled."
+];
+
 Notifications.setNotificationHandler({
   // Don't pop a banner/sound while the user is actively in the app — reminders are for when they've left.
   handleNotification: async () => {
@@ -49,8 +132,6 @@ Notifications.setNotificationHandler({
     };
   }
 });
-
-const COMEBACK_ID_KEY = "hifz:comeback-id";
 
 export async function maybeRequestNativeReviewEveryOtherDay() {
   try {
@@ -171,10 +252,11 @@ function buildNotificationPlan(settings: ReminderSettings) {
           const cardIndex = newCards.length ? (index + dayOffset) % newCards.length : 0;
           const card = newCards[cardIndex];
           if (!card) return;
+          const copy = notificationCopy("sabaq", plan.length + dayOffset + index, `${settings.newRange.label}: ${card.prompt}`);
           plan.push({
             date,
-            title: "Hifz Cards · Today's Memorisation",
-            body: `${settings.newRange.label}: recite this āyah, then continue: ${card.prompt}`,
+            title: copy.title,
+            body: copy.body,
             mode: "new",
             surah: newSurah,
             ayah: card.num,
@@ -190,10 +272,15 @@ function buildNotificationPlan(settings: ReminderSettings) {
             ? Math.max(revision.start, settings.revisionProgressAyah || revision.start)
             : 1;
           const prompt = revision?.passage.find((ayah) => ayah.num >= startAyah) ?? revision?.passage[0];
+          const copy = notificationCopy(
+            "revision",
+            plan.length + dayOffset + index,
+            `${revision?.label ?? "Revision"} · āyah ${prompt?.num ?? startAyah}`
+          );
           plan.push({
             date,
-            title: "Hifz Cards · Revision",
-            body: `${revision?.label ?? "Revision"}: continue from āyah ${prompt?.num ?? startAyah}. ${prompt?.text ? firstWords(prompt.text, 5) : "How far can you continue?"}`,
+            title: copy.title,
+            body: copy.body,
             mode: "revision",
             surah: revision?.surah ?? 1,
             ayah: prompt?.num ?? startAyah,
@@ -243,93 +330,14 @@ function frequencyMinutes(value: string) {
   return 24 * 60;
 }
 
+function notificationCopy(type: "sabaq" | "revision", seed: number, context: string) {
+  const titles = type === "sabaq" ? sabaqNotificationTitles : revisionNotificationTitles;
+  const bodies = type === "sabaq" ? sabaqNotificationBodies : revisionNotificationBodies;
+  const title = titles[seed % titles.length];
+  const body = bodies[(seed * 7 + 3) % bodies.length];
+  return { title, body: `${body} ${context}` };
+}
+
 function surahNumberOf(label: string) {
   return Number(label.split("·")[0]?.trim()) || 1;
-}
-
-// The first active moment at/after `minutes` from now, respecting active hours.
-function nextActiveDate(settings: ReminderSettings, minutes: number) {
-  const probe = new Date(Date.now() + minutes * 60 * 1000);
-  if (!settings.hoursOn) return probe;
-  const dayNames: Array<keyof Days> = ["Sun" as never, "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  for (let i = 0; i < 8; i += 1) {
-    const window = activeWindowForDay(settings, dayNames[probe.getDay()]);
-    const minute = probe.getHours() * 60 + probe.getMinutes();
-    if (minute < window.from) {
-      probe.setHours(Math.floor(window.from / 60), window.from % 60, 0, 0);
-      return probe;
-    }
-    if (minute <= window.until) return probe;
-    probe.setDate(probe.getDate() + 1);
-    probe.setHours(0, 0, 0, 0);
-  }
-  return probe;
-}
-
-function comebackContent(settings: ReminderSettings) {
-  if (settings.sabaqOn) {
-    const card = buildNewDeck(settings.newRange, settings.arabicScript)[0];
-    return {
-      title: "Hifz Cards · Pick up your sabaq",
-      body: card ? `${settings.newRange.label}: ${card.prompt}` : "Time for today's memorisation.",
-      data: {
-        mode: "new" as SessionMode,
-        screen: "session:new",
-        surah: surahNumberOf(settings.newRange.surah),
-        ayah: card?.num ?? 1,
-        cardIndex: 0,
-        autoplay: true
-      }
-    };
-  }
-  const revisionCards = buildRevisionDeck(settings.revisionRanges, settings.arabicScript, settings.revisionOrder);
-  const idx = Math.min(Math.max(0, settings.revisionProgressIndex), Math.max(0, revisionCards.length - 1));
-  const revision = revisionCards[idx];
-  const startAyah = revision ? Math.max(revision.start, settings.revisionProgressAyah || revision.start) : 1;
-  return {
-    title: "Hifz Cards · Time to revise",
-    body: revision ? `${revision.label}: start from āyah ${startAyah}.` : "Time to revise what you know.",
-    data: {
-      mode: "revision" as SessionMode,
-      screen: "session:revision",
-      surah: revision?.surah ?? 1,
-      ayah: startAyah,
-      cardIndex: idx,
-      autoplay: true
-    }
-  };
-}
-
-// Schedule a single reminder ~20 min after the user leaves the app (within active hours).
-export async function scheduleComebackReminder(settings: ReminderSettings, minutesOverride?: number) {
-  try {
-    await cancelComebackReminder();
-    if (!settings.sabaqOn && !settings.revisionOn) return;
-    const permissions = await Notifications.getPermissionsAsync();
-    if (permissions.status !== "granted") return;
-    // Fire after the user's chosen cadence for whichever service this reminder is for.
-    const freqValue = settings.sabaqOn ? settings.sabaqFreq : settings.revisionFreq;
-    const minutes = minutesOverride ?? frequencyMinutes(freqValue);
-    const date = nextActiveDate(settings, minutes);
-    const { title, body, data } = comebackContent(settings);
-    const id = await Notifications.scheduleNotificationAsync({
-      content: { title, body, sound: settings.soundOn, data },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date, channelId: "hifz-cards" }
-    });
-    await AsyncStorage.setItem(COMEBACK_ID_KEY, id);
-  } catch {
-    // best effort
-  }
-}
-
-export async function cancelComebackReminder() {
-  try {
-    const id = await AsyncStorage.getItem(COMEBACK_ID_KEY);
-    if (id) {
-      await Notifications.cancelScheduledNotificationAsync(id);
-      await AsyncStorage.removeItem(COMEBACK_ID_KEY);
-    }
-  } catch {
-    // best effort
-  }
 }

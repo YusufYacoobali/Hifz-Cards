@@ -1338,6 +1338,30 @@ export const styles = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 10
   },
+  quizHintButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 999,
+    backgroundColor: colors.mintPale,
+    paddingVertical: 8,
+    paddingHorizontal: 13
+  },
+  quizHintText: {
+    color: colors.mint,
+    fontSize: 12,
+    fontWeight: "900"
+  },
+  quizHintPanel: {
+    alignItems: "center",
+    gap: 4,
+    borderRadius: 16,
+    backgroundColor: "#fffdf8",
+    borderWidth: 1,
+    borderColor: colors.line,
+    paddingVertical: 10,
+    paddingHorizontal: 14
+  },
   quizAudioOnly: {
     width: "100%",
     borderRadius: 22,
@@ -1471,18 +1495,22 @@ export const styles = StyleSheet.create({
   },
   weakActionButton: {
     backgroundColor: colors.gold,
-    width: "100%",
+    flex: 1,
     minWidth: 0,
-    paddingHorizontal: 16
+    paddingHorizontal: Platform.OS === "android" ? 8 : 10
   },
   weakActionDone: {
     backgroundColor: colors.mintPale,
-    width: "100%",
+    flex: 1,
     minWidth: 0,
-    paddingHorizontal: 16
+    paddingHorizontal: Platform.OS === "android" ? 8 : 10
+  },
+  readWeakButton: {
+    flex: 0.62,
+    minWidth: Platform.OS === "android" ? 104 : 118
   },
   readContinueButton: {
-    width: "100%",
+    flex: 1.38,
     minWidth: 0,
     paddingHorizontal: Platform.OS === "android" ? 12 : 16
   },

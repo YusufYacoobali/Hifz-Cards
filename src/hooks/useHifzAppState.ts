@@ -1,13 +1,10 @@
 ﻿import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
-import { useEffect, useRef, useState } from "react";
-import { AppState as RNAppState } from "react-native";
+import { useEffect, useState } from "react";
 import { buildDeckContext, buildReminderSettings, serializableState, shouldShowTabs } from "../appStateSelectors";
 import { buildQuizDeck, getDeck, isRevisionFlow, PracticeItem } from "../deck";
 import {
-  cancelComebackReminder,
   maybeRequestNativeReviewEveryOtherDay,
-  scheduleComebackReminder,
   scheduleHifzNotifications
 } from "../native";
 import { AppState, initialState, KhatmRecord, ResultStatus, ReviewRecord, Screen, SessionMode } from "../types";
@@ -43,22 +40,6 @@ export function useHifzAppState() {
   }, [hydrated, state]);
 
   const reminderSettings = buildReminderSettings(state);
-  const settingsRef = useRef(reminderSettings);
-  settingsRef.current = reminderSettings;
-
-  // Fire a single reminder ~20 min after the user leaves the app; cancel it when they return.
-  useEffect(() => {
-    if (!hydrated) return;
-    const subscription = RNAppState.addEventListener("change", (next) => {
-      if (next === "background" || next === "inactive") {
-        scheduleComebackReminder(settingsRef.current);
-      } else if (next === "active") {
-        cancelComebackReminder();
-      }
-    });
-    return () => subscription.remove();
-  }, [hydrated]);
-
   useEffect(() => {
     if (!hydrated) return;
     scheduleHifzNotifications(reminderSettings).then((result) => {

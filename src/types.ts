@@ -117,7 +117,6 @@ export type AppState = {
   khatms: KhatmRecord[];
   quizQuestionCount: number;
   quizPromptMode: QuizPromptMode;
-  quizReciteButton: boolean;
   quizCustomRange: boolean;
   quizRange: SurahRange;
   quizDeck: QuizQuestion[];
@@ -210,7 +209,6 @@ export const initialState: AppState = {
   khatms: [],
   quizQuestionCount: 5,
   quizPromptMode: "text",
-  quizReciteButton: true,
   quizCustomRange: false,
   quizRange: {
     id: "quiz-default",
