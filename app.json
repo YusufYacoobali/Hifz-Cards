@@ -6,7 +6,6 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "jsEngine": "hermes",
-    "newArchEnabled": false,
     "userInterfaceStyle": "light",
     "backgroundColor": "#f6f2ea",
     "icon": "./assets/app-icon/icon-ios.png",
@@ -24,7 +23,9 @@
         "backgroundColor": "#0f3b30"
       },
       "permissions": [
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "plugins": [
@@ -37,6 +38,11 @@
       ],
       "expo-audio",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9dcd48ff-06d6-487c-a3d4-9fb5aa0d5759"
+      }
+    }
   }
 }
