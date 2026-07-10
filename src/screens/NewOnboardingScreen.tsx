@@ -58,12 +58,14 @@ export function NewOnboardingScreen({
 
   const setNewSurah = (surah: SurahInfo) => {
     const range = makeNewRange(surah, 1);
-    onPatch({ newRange: range, sabaqTargetId: range.id, ayahFrom: 1, ayahTo: surah.ayahs });
+    onPatch({ newRange: range, sabaqTargetId: range.id, ayahFrom: 1, ayahTo: surah.ayahs, newProgressBySurah: { ...state.newProgressBySurah, [String(surah.number)]: 1 } });
   };
   const setNewStart = (from: number) => {
+    const surah = surahNumberFromLabel(state.newRange.surah);
     onPatch({
       newRange: { ...state.newRange, from, label: newStartLabel(state.newRange.surah, from) },
-      ayahFrom: from
+      ayahFrom: from,
+      newProgressBySurah: { ...state.newProgressBySurah, [String(surah)]: from }
     });
   };
 

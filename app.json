@@ -17,6 +17,7 @@
     },
     "android": {
       "package": "com.yacoobali.hifz",
+      "playStoreUrl": "https://play.google.com/store/apps/details?id=com.yacoobali.hifz",
       "icon": "./assets/app-icon/icon-android.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/app-icon/icon-android.png",

@@ -1,7 +1,7 @@
 ﻿import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import * as StoreReview from "expo-store-review";
-import { AppState as RNAppState, Platform } from "react-native";
+import { AppState as RNAppState, Linking, Platform } from "react-native";
 import { buildNewDeck, buildRevisionDeck } from "./deck";
 import { ActiveHoursMode, ArabicScript, DailyActiveHours, Days, MemorisationRange, RevisionOrder, SessionMode, SurahRange } from "./types";
 
@@ -34,7 +34,11 @@ export type ReminderSettings = {
 };
 
 const REVIEW_KEY = "hifz:last-native-review";
+const FIRST_SEEN_KEY = "hifz:first-seen-at";
 const NOTIFICATION_CACHE_KEY = "hifz:last-notification-plan";
+const ANDROID_PACKAGE = "com.yacoobali.hifz";
+const PLAY_STORE_WEB_URL = `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE}`;
+const PLAY_STORE_APP_URL = `market://details?id=${ANDROID_PACKAGE}`;
 
 const sabaqNotificationTitles = [
   "A small new-surah moment is ready",
@@ -133,12 +137,16 @@ Notifications.setNotificationHandler({
   }
 });
 
-export async function maybeRequestNativeReviewEveryOtherDay() {
+export async function maybeRequestNativeReviewOccasionally() {
   try {
     const now = Date.now();
-    const last = Number(await AsyncStorage.getItem(REVIEW_KEY));
+    const firstSeen = await ensureFirstSeenAt(now);
     const twoDays = 2 * 24 * 60 * 60 * 1000;
-    if (last && now - last < twoDays) return;
+    if (now - firstSeen < twoDays) return;
+
+    const last = Number(await AsyncStorage.getItem(REVIEW_KEY));
+    const threeWeeks = 21 * 24 * 60 * 60 * 1000;
+    if (last && now - last < threeWeeks) return;
 
     const available = await StoreReview.isAvailableAsync();
     const hasAction = await StoreReview.hasAction();
@@ -149,6 +157,26 @@ export async function maybeRequestNativeReviewEveryOtherDay() {
   } catch {
     // Native review availability is intentionally best-effort.
   }
+}
+
+export async function canOpenStoreReviewPage() {
+  return Boolean(storeReviewUrl());
+}
+
+export async function openStoreReviewPage() {
+  const urls = storeReviewUrl();
+  if (!urls) return false;
+  const candidates = Array.isArray(urls) ? urls : [urls];
+  for (const url of candidates) {
+    try {
+      if (!(await Linking.canOpenURL(url))) continue;
+      await Linking.openURL(url);
+      return true;
+    } catch {
+      // Try the next URL.
+    }
+  }
+  return false;
 }
 
 export async function scheduleHifzNotifications(settings: ReminderSettings) {
@@ -204,6 +232,20 @@ export async function scheduleHifzNotifications(settings: ReminderSettings) {
   } catch {
     return { scheduled: 0, permission: "error" as const };
   }
+}
+
+async function ensureFirstSeenAt(now: number) {
+  const saved = Number(await AsyncStorage.getItem(FIRST_SEEN_KEY));
+  if (saved) return saved;
+  await AsyncStorage.setItem(FIRST_SEEN_KEY, String(now));
+  return now;
+}
+
+function storeReviewUrl() {
+  const configured = StoreReview.storeUrl();
+  if (configured) return configured;
+  if (Platform.OS === "android") return [PLAY_STORE_APP_URL, PLAY_STORE_WEB_URL];
+  return null;
 }
 
 function buildNotificationPlan(settings: ReminderSettings) {

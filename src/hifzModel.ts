@@ -1,7 +1,8 @@
 import { leaderboard } from "./data";
 import { ayahCard } from "./deck";
+import { allPracticeEvents, dueWeakEntries, learningWeakEntries, memorisedCountFromProgress } from "./progressModel";
 import { allSurahs } from "./surahs";
-import { AppState, KhatmRecord, ReviewRecord } from "./types";
+import { AppState, KhatmRecord, ReviewRecord, WeakSpotQueueEntry } from "./types";
 
 export type ReviewMode = "new" | "revision" | "weak";
 export type ReviewResult = "solid" | "shaky" | "forgot" | "finished";
@@ -99,7 +100,7 @@ function getAllAttempts(history: ReviewRecord[] = []) {
 }
 
 function normalizeMode(mode: ReviewRecord["mode"]): ReviewMode {
-  if (mode === "yesterdayWeak") return "weak";
+  if (mode === "yesterdayWeak" || mode === "quiz") return "weak";
   if (mode === "recent") return "revision";
   return mode;
 }
@@ -157,11 +158,6 @@ function periodRevisionAyahs(periodHistory: ReviewRecord[], khatms: KhatmRecord[
     .filter((khatm) => inWindow(khatm.completedAt, start, end))
     .reduce((sum, khatm) => sum + Math.max(0, khatm.total || 0), 0);
   return Math.max(historyTotal, khatmTotal);
-}
-
-function trailingNumber(label: string) {
-  const match = label.match(/(\d+)\s*$/);
-  return match ? Number(match[1]) : undefined;
 }
 
 function computeStreak(history: ReviewRecord[]) {
@@ -267,31 +263,21 @@ function nextPrompt(state: AppState) {
 }
 
 export function getDashboardStats(state: AppState) {
-  const history = state.reviewHistory ?? [];
+  const history = allPracticeEvents(state);
   const newRange = state.newRange;
   const surahNumber = Number(newRange.surah.split("·")[0]?.trim()) || 67;
   const surahInfo = allSurahs.find((surah) => surah.number === surahNumber);
   const totalInRange = surahInfo?.ayahs ?? 30;
   const englishName = newRange.surah.split("·").slice(1).join("·").trim() || "Al-Mulk";
 
-  const solidAyahs = new Set<number>();
-  const weakAyahs = new Set<number>();
-  history.forEach((record) => {
-    if (!record.ayahLabel.includes(englishName)) return;
-    const ayahNumber = trailingNumber(record.ayahLabel);
-    if (!ayahNumber) return;
-    if (record.result === "solid" || record.result === "finished") solidAyahs.add(ayahNumber);
-    else if (record.result === "shaky" || record.result === "forgot" || String(record.result).startsWith("stuck@")) {
-      weakAyahs.add(ayahNumber);
-    }
-  });
+  const dueWeak = dueWeakEntries({ weakSpotQueue: state.weakSpotQueue ?? {} });
+  const scheduledWeakCount = Math.max(0, learningWeakEntries({ weakSpotQueue: state.weakSpotQueue ?? {} }).length - dueWeak.length);
 
-  const priorKnown = Math.max(0, (newRange.from || 1) - 1);
-  const securedCount = Math.min(totalInRange, priorKnown + solidAyahs.size);
+  const securedCount = memorisedCountFromProgress(newRange, state.newProgressBySurah ?? {});
   const memorisedPercent = totalInRange ? Math.round((securedCount / totalInRange) * 100) : 0;
   const weeklyDays = weekActivity(history);
   const prompt = nextPrompt(state);
-  const sortedWeak = Array.from(weakAyahs).sort((a, b) => a - b);
+  const weakLabels = dueWeak.slice(0, 4).map((entry) => `${entry.surah}:${entry.ayah}`);
 
   return {
     currentSurah: `Sūrah ${englishName}`,
@@ -303,37 +289,27 @@ export function getDashboardStats(state: AppState) {
     nextNotification: prompt.time,
     nextNotificationIn: prompt.inLabel,
     streak: computeStreak(history),
-    weakCount: sortedWeak.length,
-    weakAyahs: sortedWeak.length ? sortedWeak.join(", ") : "none marked yet",
+    weakCount: dueWeak.length,
+    scheduledWeakCount,
+    weakAyahs: weakLabels.length ? weakLabels.join(", ") : "none marked yet",
     completedCards: history.length,
     weeklyDays,
     weeklyCompletedDays: weeklyDays.filter(Boolean).length
   };
 }
 
-function getWeakSpotCardsFromHistory(history: ReviewRecord[]) {
-  const latestByAyah = new Map<string, ReviewRecord>();
-  const weakCounts = new Map<string, number>();
-  history.forEach((record) => {
-    if (!record.surah || !record.ayah) return;
-    const key = `${record.surah}:${record.ayah}`;
-    if (!latestByAyah.has(key)) latestByAyah.set(key, record);
-    if (record.result === "shaky" || record.result === "forgot" || String(record.result).startsWith("stuck@")) {
-      weakCounts.set(key, (weakCounts.get(key) ?? 0) + 1);
-    }
-  });
-  return Array.from(latestByAyah.entries())
-    .filter(([, record]) => record.result === "shaky" || record.result === "forgot" || String(record.result).startsWith("stuck@"))
-    .map(([ayahId, record]) => {
-      const built = ayahCard(record.surah ?? 67, record.ayah ?? 1);
+function getWeakSpotCardsFromQueue(queue: Record<string, WeakSpotQueueEntry> = {}) {
+  return dueWeakEntries({ weakSpotQueue: queue })
+    .map((entry) => {
+      const built = ayahCard(entry.surah, entry.ayah);
       return {
-        ayahId,
-        weaknessScore: Math.min(99, 45 + (weakCounts.get(ayahId) ?? 1) * 15),
-        lastReviewedAt: record.timestamp,
-        nextDueAt: new Date(new Date(record.timestamp).getTime() + 24 * 60 * 60 * 1000).toISOString(),
+        ayahId: entry.ayahId,
+        weaknessScore: Math.min(99, 35 + entry.weaknessCount * 15),
+        lastReviewedAt: entry.lastReviewedAt,
+        nextDueAt: entry.nextDueAt,
         card: {
-          id: ayahId,
-          surah: built.surah ?? `Surah ${record.surah}`,
+          id: entry.ayahId,
+          surah: built.surah ?? `Surah ${entry.surah}`,
           ayahNumber: built.num,
           text: built.full,
           prompt: built.prompt,
@@ -343,7 +319,7 @@ function getWeakSpotCardsFromHistory(history: ReviewRecord[]) {
     })
     .sort((a, b) => b.weaknessScore - a.weaknessScore);
 }
-export function getProgressStats(history: ReviewRecord[] = []) {
+export function getProgressStats(history: ReviewRecord[] = [], weakSpotQueue: Record<string, WeakSpotQueueEntry> = {}) {
   const attempts = getAllAttempts(history);
   const easy = attempts.filter((attempt) => attempt.result === "solid" || attempt.result === "finished").length;
   const weak = attempts.filter((attempt) => attempt.result === "shaky" || Boolean(attempt.gotStuckAtAyah)).length;
@@ -371,7 +347,7 @@ export function getProgressStats(history: ReviewRecord[] = []) {
     easy,
     weak,
     failed,
-    weakSpots: getWeakSpotCardsFromHistory(history),
+    weakSpots: getWeakSpotCardsFromQueue(weakSpotQueue),
     ayahMap
   };
 }

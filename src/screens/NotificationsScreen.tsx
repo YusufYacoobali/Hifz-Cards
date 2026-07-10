@@ -30,13 +30,15 @@ export function NotificationsScreen({
   };
   const setNewSurah = (surah: SurahInfo) => {
     const range = makeNewRange(surah, 1);
-    onPatch({ newRange: range, sabaqTargetId: range.id, ayahFrom: 1, ayahTo: surah.ayahs, cardIndex: 0 });
+    onPatch({ newRange: range, sabaqTargetId: range.id, ayahFrom: 1, ayahTo: surah.ayahs, cardIndex: 0, newProgressBySurah: { ...state.newProgressBySurah, [String(surah.number)]: 1 } });
   };
   const setNewStart = (from: number) => {
+    const surah = surahNumberFromLabel(state.newRange.surah);
     onPatch({
       newRange: { ...state.newRange, from, label: newStartLabel(state.newRange.surah, from) },
       ayahFrom: from,
-      cardIndex: 0
+      cardIndex: 0,
+      newProgressBySurah: { ...state.newProgressBySurah, [String(surah)]: from }
     });
   };
   const updateRevisionRange = (id: string, fromSurah: number, toSurah: number) => {

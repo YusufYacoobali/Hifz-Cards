@@ -1,5 +1,6 @@
 import { buildRevisionDeck } from "./deck";
 import { RevisionFlow } from "./data";
+import { allPracticeEvents, dailyStatsFor, isWeakResult } from "./progressModel";
 import { allSurahs, SurahInfo } from "./surahs";
 import { colors } from "./theme";
 import { AppState, Days, MemorisationRange, ReviewRecord, SurahRange } from "./types";
@@ -160,21 +161,13 @@ export function remainingRevisionRoundItems(state: AppState) {
   return revisionRoundItems(state).filter((item) => item.doneAyahs < item.totalAyahs);
 }
 
-function sameLocalDay(iso: string, day: Date) {
-  const time = new Date(iso);
-  return !Number.isNaN(time.getTime()) && time.toDateString() === day.toDateString();
-}
-
-function newAyatReviewedToday(state: AppState, today: Date) {
-  return (state.reviewHistory ?? []).filter((record) => record.mode === "new" && sameLocalDay(record.timestamp, today)).length;
-}
-
 export function dailyPracticePlan(state: AppState, today = new Date()) {
   const dateKey = today.toDateString();
   const newTarget = Math.max(1, state.perDay || 1);
-  const newDone = newAyatReviewedToday(state, today);
+  const stats = dailyStatsFor(state, today);
+  const newDone = stats.securedNewAyahs.length;
   const revisionTarget = Math.max(1, recommendedRevisionAyat(state.revisionRanges, state.revisionRoundDays));
-  const revisionDone = state.revisionDoneDate === dateKey ? Math.max(0, state.revisionDoneToday ?? 0) : 0;
+  const revisionDone = Math.max(0, stats.revisedAyahs);
   const newEnabled = state.sabaqOn;
   const revisionEnabled = state.revisionOn;
   const newRemaining = newEnabled ? Math.max(0, newTarget - newDone) : 0;
@@ -200,6 +193,7 @@ export function dailyPracticePlan(state: AppState, today = new Date()) {
       complete: !revisionEnabled || revisionRemaining === 0
     },
     totalDone: (newEnabled ? newDone : 0) + (revisionEnabled ? revisionDone : 0),
+    weakMarked: stats.weakMarkedAyahs.length,
     hasActiveGoal,
     complete,
     celebrationKeys: {
@@ -234,9 +228,9 @@ export function currentKhatmStats(state: AppState) {
   const since = state.khatms?.[0] ? new Date(state.khatms[0].completedAt).getTime() : 0;
   const weakAyahs: Array<{ surah: number; ayah: number }> = [];
   const seen = new Set<string>();
-  (state.reviewHistory ?? []).forEach((r) => {
-    const isWeak = r.result === "shaky" || r.result === "forgot" || String(r.result).startsWith("stuck@");
-    if (!isWeak || !r.surah || !r.ayah || new Date(r.timestamp).getTime() < since) return;
+  allPracticeEvents(state).forEach((r) => {
+    // Only revision-session slips reflect this khatm's recitation — sabaq/quiz/drill misses don't.
+    if (!isWeakResult(r.result) || r.mode !== "revision" || !r.surah || !r.ayah || new Date(r.timestamp).getTime() < since) return;
     const k = `${r.surah}:${r.ayah}`;
     if (seen.has(k)) return;
     seen.add(k);

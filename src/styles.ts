@@ -2066,6 +2066,23 @@ export const styles = StyleSheet.create({
     fontWeight: "900",
     fontSize: 12.5
   },
+  weakPillLater: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.paper,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderStyle: "dashed",
+    borderRadius: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 11
+  },
+  weakPillLaterText: {
+    color: colors.faint,
+    fontWeight: "800",
+    fontSize: 12
+  },
   khatmEmpty: {
     alignItems: "center",
     gap: 6,

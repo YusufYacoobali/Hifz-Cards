@@ -3,7 +3,8 @@ import { HifzCard, revisionFlows, RevisionFlow, newDeck } from "./data";
 import { ayahText, ayahTranslation, firstWords, surahVerses } from "./quran";
 import { allSurahs } from "./surahs";
 import { colors } from "./theme";
-import { ArabicScript, MemorisationRange, QuizQuestion, ReviewRecord, RevisionOrder, SessionMode, SurahRange } from "./types";
+import { dueWeakEntries, yesterdayWeakEntries } from "./progressModel";
+import { ArabicScript, MemorisationRange, QuizQuestion, ReviewRecord, RevisionOrder, SessionMode, SurahRange, WeakSpotQueueEntry } from "./types";
 
 export type PracticeItem = HifzCard | RevisionFlow;
 
@@ -11,13 +12,14 @@ export type DeckContext = {
   newRange: MemorisationRange;
   revisionRanges: SurahRange[];
   history?: ReviewRecord[];
+  weakSpotQueue?: Record<string, WeakSpotQueueEntry>;
   arabicScript?: ArabicScript;
   revisionOrder?: RevisionOrder;
   recentSurahLimit?: number;
   recentSelectedSurahs?: number[];
 };
 
-// How many new ÄyÄt to surface in one sabaq session, counting from the start point.
+// How many new āyāt to surface in one sabaq session, counting from the start point.
 const NEW_SESSION_SIZE = 8;
 
 function surahNumberOf(label: string) {
@@ -28,7 +30,7 @@ function surahMeta(number: number) {
   return allSurahs.find((surah) => surah.number === number);
 }
 
-// Build a single memorisation card (full Äyah + Hilali/Khan translation) for any sÅ«rah:Äyah.
+// Build a single memorisation card (full āyah + Hilali/Khan translation) for any sūrah:āyah.
 export function ayahCard(surah: number, ayah: number, script: ArabicScript = "uthmani"): HifzCard {
   const meta = surahMeta(surah);
   const text = ayahText(surah, ayah, script);
@@ -37,12 +39,12 @@ export function ayahCard(surah: number, ayah: number, script: ArabicScript = "ut
     prompt: firstWords(text, 4),
     full: text,
     tr: ayahTranslation(surah, ayah),
-    surah: meta ? `${surah} Â· ${meta.english}` : `SÅ«rah ${surah}`,
+    surah: meta ? `${surah} · ${meta.english}` : `Sūrah ${surah}`,
     surahArabic: meta?.arabic
   };
 }
 
-// New memorisation: the next ÄyÄt starting from where the user is, moving forward to the end.
+// New memorisation: the next āyāt starting from where the user is, moving forward to the end.
 export function buildNewDeck(newRange: MemorisationRange, script: ArabicScript = "uthmani"): HifzCard[] {
   const number = surahNumberOf(newRange.surah);
   const meta = surahMeta(number);
@@ -62,47 +64,13 @@ export function buildNewDeck(newRange: MemorisationRange, script: ArabicScript =
     }));
 }
 
-// Weak deck = ÄyÄt the user marked shaky/forgot/stuck, newest first, de-duplicated.
-export function buildWeakDeck(history: ReviewRecord[] = [], script: ArabicScript = "uthmani"): HifzCard[] {
-  const seen = new Set<string>();
-  const cards: HifzCard[] = [];
-  for (const record of history) {
-    if (!record.surah || !record.ayah) continue;
-    const key = `${record.surah}:${record.ayah}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const isWeak =
-      record.result === "shaky" || record.result === "forgot" || String(record.result).startsWith("stuck@");
-    if (!isWeak) continue;
-    const card = ayahCard(record.surah, record.ayah, script);
-    if (card.full) cards.push(card);
-  }
-  return cards;
+export function buildDueWeakDeck(queue: Record<string, WeakSpotQueueEntry> = {}, script: ArabicScript = "uthmani"): HifzCard[] {
+  return dueWeakEntries({ weakSpotQueue: queue })
+    .map((entry) => ayahCard(entry.surah, entry.ayah, script))
+    .filter((card) => Boolean(card.full));
 }
 
-export function buildYesterdayWeakDeck(history: ReviewRecord[] = [], script: ArabicScript = "uthmani"): HifzCard[] {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime();
-  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const seen = new Set<string>();
-  const cards: HifzCard[] = [];
-  for (const record of history) {
-    if (!record.surah || !record.ayah) continue;
-    const key = `${record.surah}:${record.ayah}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const time = new Date(record.timestamp).getTime();
-    const isYesterday = time >= start && time < end;
-    const isWeak =
-      record.result === "shaky" || record.result === "forgot" || String(record.result).startsWith("stuck@");
-    if (!isYesterday || !isWeak) continue;
-    const card = ayahCard(record.surah, record.ayah, script);
-    if (card.full) cards.push(card);
-  }
-  return cards;
-}
-
-// Revision: each known sÅ«rah becomes a flow you recite end-to-end, tapping where you stop.
+// Revision: each known sūrah becomes a flow you recite end-to-end, tapping where you stop.
 export function buildRevisionDeck(
   ranges: SurahRange[],
   script: ArabicScript = "uthmani",
@@ -124,12 +92,18 @@ export function buildRevisionDeck(
       return {
         start: 1,
         surah: number,
-        label: meta ? `${number} Â· ${meta.english}` : `SÅ«rah ${number}`,
+        label: meta ? `${number} · ${meta.english}` : `Sūrah ${number}`,
         passage
       } as RevisionFlow;
     })
     .filter(Boolean) as RevisionFlow[];
   return flows;
+}
+
+export function buildYesterdayDueWeakDeck(queue: Record<string, WeakSpotQueueEntry> = {}, script: ArabicScript = "uthmani"): HifzCard[] {
+  return yesterdayWeakEntries({ weakSpotQueue: queue })
+    .map((entry) => ayahCard(entry.surah, entry.ayah, script))
+    .filter((card) => Boolean(card.full));
 }
 
 export function buildRecentRevisionDeck(
@@ -188,37 +162,43 @@ export function buildQuizDeck(
       const meta = surahMeta(surah);
       const verses = surahVerses(surah, script);
       if (!verses.length) continue;
-      const maxStart = Math.max(1, verses.length - 4);
-      verses
-        .filter((verse) => verse.num <= maxStart)
-        .forEach((verse) => {
-          pool.push({
-            id: `${surah}:${verse.num}`,
-            surah,
-            ayah: verse.num,
-            label: meta ? `${surah} Â· ${meta.english}` : `Surah ${surah}`,
-            prompt: firstWords(verse.text, 5),
-            full: verse.text,
-            translation: ayahTranslation(surah, verse.num),
-            continueTo: Math.min(verses.length, verse.num + 4)
-          });
+      // Every āyah is quizzable — including sūrah endings, a classic weak point.
+      // continueTo clamps at the last āyah, so near-end prompts just continue less far.
+      verses.forEach((verse) => {
+        pool.push({
+          id: `${surah}:${verse.num}`,
+          surah,
+          ayah: verse.num,
+          label: meta ? `${surah} · ${meta.english}` : `Surah ${surah}`,
+          prompt: firstWords(verse.text, 5),
+          full: verse.text,
+          translation: ayahTranslation(surah, verse.num),
+          continueTo: Math.min(verses.length, verse.num + 4)
         });
+      });
     }
   });
-  return pool
+  // Identical openings (e.g. «يَا أَيُّهَا الَّذِينَ آمَنُوا») make a "continue from here" prompt
+  // genuinely ambiguous — prefer prompts unique in the pool, topping up only if that leaves too few.
+  const promptCounts = new Map<string, number>();
+  pool.forEach((question) => promptCounts.set(question.prompt, (promptCounts.get(question.prompt) ?? 0) + 1));
+  const target = Math.max(1, count);
+  const unique = pool.filter((question) => promptCounts.get(question.prompt) === 1);
+  const source = unique.length >= target ? unique : pool;
+  return source
     .map((question) => ({ question, sort: Math.random() }))
     .sort((a, b) => a.sort - b.sort)
-    .slice(0, Math.max(1, count))
+    .slice(0, target)
     .map(({ question }) => question);
 }
 
 export function getDeck(mode: SessionMode, ctx?: DeckContext): PracticeItem[] {
   if (mode === "weak") {
-    const built = buildWeakDeck(ctx?.history, ctx?.arabicScript);
+    const built = buildDueWeakDeck(ctx?.weakSpotQueue, ctx?.arabicScript);
     return built;
   }
   if (mode === "yesterdayWeak") {
-    return buildYesterdayWeakDeck(ctx?.history, ctx?.arabicScript);
+    return buildYesterdayDueWeakDeck(ctx?.weakSpotQueue, ctx?.arabicScript);
   }
   if (mode === "recent") {
     if (!ctx) return revisionFlows.slice(0, 3);

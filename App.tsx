@@ -18,7 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { buildDeckContext } from "./src/appStateSelectors";
-import { ayahCard, ayahCellStyle, buildNewDeck, buildRecentRevisionDeck, buildRevisionDeck, buildWeakDeck, buildYesterdayWeakDeck, getDeck, isRevisionFlow, sessionProgressWidth } from "./src/deck";
+import { ayahCard, ayahCellStyle, buildDueWeakDeck, buildNewDeck, buildRecentRevisionDeck, buildRevisionDeck, buildYesterdayDueWeakDeck, getDeck, isRevisionFlow, PracticeItem, sessionProgressWidth } from "./src/deck";
 import { HifzCard } from "./src/data";
 import {
   getDashboardStats,
@@ -33,6 +33,7 @@ import { captureRef } from "react-native-view-shot";
 import { playAyah, prefetchAyat, stopAyah } from "./src/audio";
 import { reciterById, reciters } from "./src/reciters";
 import { currentKhatmStats, dailyPracticePlan, makeSurahRange, monthConsistency, remainingRevisionRoundItems, revisionRoundItems, revisionTotals, surahNumberFromLabel } from "./src/planning";
+import { allPracticeEvents, dailyStatsFor, learningWeakEntries, recentPracticeEvents } from "./src/progressModel";
 import { colors } from "./src/theme";
 import { styles } from "./src/styles";
 import { NewOnboardingScreen } from "./src/screens/NewOnboardingScreen";
@@ -232,7 +233,8 @@ function HomeScreen({
   const plan = dailyPracticePlan(state);
   const revision = revisionTotals(state);
   const homeKhatm = currentKhatmStats(state);
-  const homeHistory = state.reviewHistory ?? [];
+  const homeHistory = recentPracticeEvents(state, 4);
+  const savedHistoryCount = allPracticeEvents(state).length;
 
   return (
     <View style={styles.fullScreen}>
@@ -273,8 +275,14 @@ function HomeScreen({
               <Ionicons name="warning-outline" size={20} color={colors.goldDark} />
             </View>
             <View style={styles.flex}>
-              <Text style={styles.cardTitle}>{dashboard.weakCount} weak āyāt to revise</Text>
-              <Text style={styles.cardSubtitle}>{dashboard.weakCount ? `${dashboard.currentSurah}: āyāt ${dashboard.weakAyahs}` : "Nothing flagged yet — marks from sessions show here"}</Text>
+              <Text style={styles.cardTitle}>{dashboard.weakCount} weak āyāt due{dashboard.scheduledWeakCount ? ` · ${dashboard.scheduledWeakCount} for later` : ""}</Text>
+              <Text style={styles.cardSubtitle}>
+                {dashboard.weakCount
+                  ? `${dashboard.currentSurah}: āyāt ${dashboard.weakAyahs}`
+                  : dashboard.scheduledWeakCount
+                    ? "Nothing due right now — marked āyāt return when their review is scheduled"
+                    : "Nothing flagged yet — marks from sessions show here"}
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.faint} />
           </Pressable>
@@ -334,7 +342,7 @@ function HomeScreen({
           <Panel>
             <View style={styles.rowBetween}>
               <Text style={styles.sectionTitle}>Recent review journal</Text>
-              <Text style={styles.greenStrong}>{homeHistory.length} saved</Text>
+              <Text style={styles.greenStrong}>{savedHistoryCount} saved</Text>
             </View>
             {(homeHistory.length ? homeHistory.slice(0, 4) : [
               { id: "empty", ayahLabel: "No session marks yet", result: "Start a card session", timestamp: new Date().toISOString() }
@@ -375,9 +383,11 @@ function ModeScreen({
   const [recentDetailOpen, setRecentDetailOpen] = useState(false);
   const newCount = buildNewDeck(state.newRange, state.arabicScript).length;
   const revisionDeck = buildRevisionDeck(state.revisionRanges, state.arabicScript, state.revisionOrder);
-  const weakCount = buildWeakDeck(state.reviewHistory, state.arabicScript).length;
-  const yesterdayWeakCount = buildYesterdayWeakDeck(state.reviewHistory, state.arabicScript).length;
-  const recentDeck = buildRecentRevisionDeck(state.reviewHistory, state.revisionRanges, state.arabicScript, state.recentSelectedSurahs, state.recentSurahLimit);
+  const history = allPracticeEvents(state);
+  const weakCount = buildDueWeakDeck(state.weakSpotQueue, state.arabicScript).length;
+  const scheduledWeakCount = Math.max(0, learningWeakEntries(state).length - weakCount);
+  const yesterdayWeakCount = buildYesterdayDueWeakDeck(state.weakSpotQueue, state.arabicScript).length;
+  const recentDeck = buildRecentRevisionDeck(history, state.revisionRanges, state.arabicScript, state.recentSelectedSurahs, state.recentSurahLimit);
   const recentCount = recentDeck.length;
   const revisionCount = revisionDeck.length;
   const revision = revisionTotals(state);
@@ -399,7 +409,13 @@ function ModeScreen({
   };
   const startWeak = () => {
     if (!weakCount) {
-      Alert.alert("No weak cards yet", "Mark an ayah as shaky, forgotten, or stuck during a session and it will appear here.");
+      const scheduledWeak = learningWeakEntries(state).length;
+      Alert.alert(
+        scheduledWeak ? "Nothing due right now" : "No weak cards yet",
+        scheduledWeak
+          ? `${scheduledWeak} weak āyah${scheduledWeak === 1 ? " is" : "s are"} scheduled for later — drilling early just tests short-term echo, so they'll return when their review is due.`
+          : "Mark an ayah as shaky, forgotten, or stuck during a session and it will appear here."
+      );
       return;
     }
     onStart("weak");
@@ -546,7 +562,20 @@ function ModeScreen({
                     <Text style={styles.cardSubtitle}>Start from ayah {entry.startAyah} - {entry.totalAyahs - entry.doneAyahs} left</Text>
                   </View>
                 </Pressable>
-                <Pressable style={styles.revisionQuickDone} onPress={() => onCompleteSurah(entry.index)} hitSlop={8}>
+                <Pressable
+                  style={styles.revisionQuickDone}
+                  onPress={() =>
+                    Alert.alert(
+                      `Mark ${entry.flow.label} complete?`,
+                      `Only mark it done if you've recited the remaining ${entry.totalAyahs - entry.doneAyahs} āyāt from memory.`,
+                      [
+                        { text: "Not yet", style: "cancel" },
+                        { text: "I recited it", onPress: () => onCompleteSurah(entry.index) }
+                      ]
+                    )
+                  }
+                  hitSlop={8}
+                >
                   <Ionicons name="checkmark" size={18} color={colors.mintDark} />
                 </Pressable>
               </View>
@@ -586,8 +615,14 @@ function ModeScreen({
       <ModeCard
         icon="warning-outline"
         title="Weak Spot Cards"
-        subtitle={weakCount ? `Repeat the ${weakCount} ayat you slipped on` : "Marked slips will appear here"}
-        quote={weakCount ? "Drill the shaky ones until they settle." : "Start with revision or new cards to build this deck."}
+        subtitle={
+          weakCount
+            ? `${weakCount} due now${scheduledWeakCount ? ` · ${scheduledWeakCount} scheduled for later` : ""}`
+            : scheduledWeakCount
+              ? `None due now · ${scheduledWeakCount} scheduled for later`
+              : "Marked slips will appear here"
+        }
+        quote={weakCount ? "Drill the shaky ones until they settle." : scheduledWeakCount ? "Spacing the reviews out is what makes them stick." : "Start with revision or new cards to build this deck."}
         warn
         onPress={startWeak}
       />
@@ -722,15 +757,15 @@ function QuizSessionScreen({
           <Ionicons name="checkmark" size={42} color={colors.gold} />
         </View>
         <Text style={styles.doneTitle}>Quiz complete</Text>
-        <Text style={styles.doneSub}>{values.length} temporary question{values.length === 1 ? "" : "s"} checked</Text>
+        <Text style={styles.doneSub}>{values.length} question{values.length === 1 ? "" : "s"} checked</Text>
         <View style={styles.statRow}>
           <ResultBox value={solid} label="Solid" color={colors.mint} />
           <ResultBox value={shaky} label="Shaky" color={colors.goldDark} />
           <ResultBox value={forgot} label="Forgot" color={colors.red} />
         </View>
         <Panel>
-          <Text style={styles.sectionTitle}>Not saved to progress</Text>
-          <Text style={styles.cardSubtitle}>Quiz marks are just a live self-check. Your weak āyāt, streak, khatm progress, and review journal were not changed.</Text>
+          <Text style={styles.sectionTitle}>Counted towards your progress</Text>
+          <Text style={styles.cardSubtitle}>Shaky or forgotten āyāt joined your weak cards to drill later, and this quiz counts toward today's activity. Khatm and memorisation positions are untouched.</Text>
         </Panel>
         <OutlineButton label="Run another quiz" onPress={() => onPatch({ screen: "quizSetup", quizPhase: "idle", quizDeck: [], quizIndex: 0, quizResults: {} })} />
         <PrimaryButton label="Back to home" onPress={() => onExit("home")} />
@@ -822,25 +857,25 @@ function SessionScreen({
   onResumeRevision: () => void;
 }) {
   const deck = getDeck(state.sessionMode, buildDeckContext(state));
-  const item = deck[Math.min(state.cardIndex, deck.length - 1)];
+  const item = deck[Math.min(state.cardIndex, deck.length - 1)] as PracticeItem | undefined;
   const total = deck.length;
   const progress = sessionProgressWidth(state.cardIndex, total);
   const translateX = useRef(new Animated.Value(0)).current;
-  const isRev = isRevisionFlow(item);
+  const isRev = !!item && isRevisionFlow(item);
   const isRecent = state.sessionMode === "recent";
   const isWeakReview = state.sessionMode === "weak" || state.sessionMode === "yesterdayWeak";
   const reading = isRev && state.revisionReadAyah > 0;
   const arScale = arabicSizeScale[state.arabicSize] ?? 1;
-  const readCard = reading ? ayahCard(item.surah ?? 0, state.revisionReadAyah, state.arabicScript) : null;
-  const currentSurahNumber = isRev ? item.surah ?? 0 : surahNumberFromLabel(item.surah ?? "67");
-  const currentAyahNumber = reading ? state.revisionReadAyah : isRev ? item.start : item.num;
+  const readCard = reading && isRev ? ayahCard(item.surah ?? 0, state.revisionReadAyah, state.arabicScript) : null;
+  const currentSurahNumber = isRev ? item.surah ?? 0 : surahNumberFromLabel(item?.surah ?? "67");
+  const currentAyahNumber = reading ? state.revisionReadAyah : isRev ? item.start : item?.num ?? 1;
   const readAlreadyWeak = reading && !!state.results[`${currentSurahNumber}:${state.revisionReadAyah}`];
   const revisionEndAyah = isRev ? item.passage[item.passage.length - 1]?.num ?? item.start : 1;
   const revisionStartAyah = isRev ? Math.min(revisionEndAyah, Math.max(item.start, state.revisionResumeAyah || item.start)) : 1;
   const actionBottom = safeBottom + (Platform.OS === "android" ? 28 : 34);
   const actionHeight = !isRev ? (Platform.OS === "android" ? 56 : 64) : 54;
   const cardBottom = actionBottom + actionHeight + (Platform.OS === "android" ? 26 : 34);
-  const memoSurahName = isRev ? "" : (item.surah?.split("·").slice(1).join("·").trim() || item.surah || "Al-Mulk");
+  const memoSurahName = isRev ? "" : (item?.surah?.split("·").slice(1).join("·").trim() || item?.surah || "Al-Mulk");
   const topTitle = isRev
     ? isRecent ? "RECENT · SOLIDIFY" : "REVISION · RECITE FROM HERE"
     : isWeakReview
@@ -848,7 +883,15 @@ function SessionScreen({
       : "TODAY'S MEMORISATION";
   const topSubtitle = isRev
     ? `${item.label} · from āyah ${reading ? state.revisionReadAyah : revisionStartAyah}`
-    : `Sūrah ${memoSurahName} · āyah ${item.num}`;
+    : `Sūrah ${memoSurahName} · āyah ${item?.num ?? 1}`;
+  // Daily sabaq gate: once today's new target is met, stop serving fresh āyāt (with an override).
+  const [overrideDailyTarget, setOverrideDailyTarget] = useState(false);
+  useEffect(() => {
+    setOverrideDailyTarget(false);
+  }, [state.sessionMode, state.sessionPhase]);
+  const securedToday = dailyStatsFor(state).securedNewAyahs.length;
+  const newDailyTarget = Math.max(1, state.perDay || 1);
+  const newTargetReached = state.sessionMode === "new" && securedToday >= newDailyTarget;
   // Push the card below the (safe-area-aware) top bar + progress + subtitle so they never overlap.
   const cardTop = safeTop + (Platform.OS === "android" ? 80 : 86) + 28;
 
@@ -865,7 +908,7 @@ function SessionScreen({
   };
 
   const navigateRevisionReadAyah = (direction: 1 | -1) => {
-    if (!isRevisionFlow(item) || !reading) return false;
+    if (!item || !isRevisionFlow(item) || !reading) return false;
     const nextAyah = state.revisionReadAyah + direction;
     const minAyah = item.passage[0]?.num ?? 1;
     const maxAyah = item.passage[item.passage.length - 1]?.num ?? minAyah;
@@ -947,7 +990,7 @@ function SessionScreen({
   if (state.sessionPhase === "done") {
     const values = Object.values(state.results);
     const isRev = state.sessionMode === "revision";
-    const sessionRecords = (state.reviewHistory ?? []).slice(0, Math.max(1, Math.min(total, 4)));
+    const sessionRecords = recentPracticeEvents(state, Math.max(1, Math.min(total, 4)));
     return (
       <ScrollView style={styles.sessionBg} contentContainerStyle={[styles.doneContent, { paddingTop: safeTop + 50, paddingBottom: safeBottom + 30 }]} showsVerticalScrollIndicator={false}>
         <View style={styles.doneCheck}>
@@ -993,6 +1036,44 @@ function SessionScreen({
         )}
         <OutlineButton label="Review weak āyāt again" onPress={() => onStart("weak")} />
         <PrimaryButton label="Back to home" onPress={() => onNav("home")} />
+      </ScrollView>
+    );
+  }
+
+  if (!item) {
+    // Due-only decks can be empty (nothing scheduled right now) — never render a card off an empty deck.
+    return (
+      <ScrollView style={styles.sessionBg} contentContainerStyle={[styles.doneContent, { paddingTop: safeTop + 50, paddingBottom: safeBottom + 30 }]} showsVerticalScrollIndicator={false}>
+        <View style={styles.doneCheck}>
+          <Ionicons name="checkmark" size={42} color={colors.gold} />
+        </View>
+        <Text style={styles.doneTitle}>All caught up</Text>
+        <Text style={styles.doneSub}>Nothing is due in this deck right now.</Text>
+        <PrimaryButton label="Back to home" onPress={() => onNav("home")} />
+      </ScrollView>
+    );
+  }
+
+  if (newTargetReached && !overrideDailyTarget && state.sessionPhase === "running") {
+    // Today's sabaq target is met — stop serving fresh āyāt. More new hifz now usually
+    // comes at the cost of yesterday's; revision is worth more than extra sabaq.
+    return (
+      <ScrollView style={styles.sessionBg} contentContainerStyle={[styles.doneContent, { paddingTop: safeTop + 50, paddingBottom: safeBottom + 30 }]} showsVerticalScrollIndicator={false}>
+        <View style={styles.doneCheck}>
+          <Ionicons name="checkmark" size={42} color={colors.gold} />
+        </View>
+        <Text style={styles.doneTitle}>Today's sabaq is done</Text>
+        <Text style={styles.doneSub}>{securedToday} of {newDailyTarget} new āyāt secured today</Text>
+        <Panel>
+          <Text style={styles.sectionTitle}>Why stop here?</Text>
+          <Text style={styles.cardSubtitle}>
+            New hifz needs a night to settle. Pushing further now usually weakens what you memorised yesterday — spending the
+            time on revision protects it instead.
+          </Text>
+        </Panel>
+        <OutlineButton label="Revise instead" onPress={() => onStart("revision")} />
+        <OutlineButton label="Memorise more anyway" onPress={() => setOverrideDailyTarget(true)} />
+        <PrimaryButton label="Done for today" onPress={() => onNav("home")} />
       </ScrollView>
     );
   }
@@ -1098,13 +1179,25 @@ function SessionScreen({
   );
 }
 
+// Compact "when is this review due" label for scheduled weak āyāt (e.g. "in 3h", "tomorrow", "in 2d").
+function dueInLabel(nextDueAt: string) {
+  const diffMs = new Date(nextDueAt).getTime() - Date.now();
+  if (diffMs <= 0) return "now";
+  const hours = Math.ceil(diffMs / (60 * 60 * 1000));
+  if (hours < 24) return `in ${hours}h`;
+  const days = Math.ceil(hours / 24);
+  return days === 1 ? "tomorrow" : `in ${days}d`;
+}
+
 function ProgressScreen({ state, safeTop, onNav, onStart }: { state: AppState; safeTop: number; onNav: (screen: Screen) => void; onStart: (mode: SessionMode, startIndex?: number) => void }) {
-  const progress = getProgressStats(state.reviewHistory);
+  const history = allPracticeEvents(state);
+  const progress = getProgressStats(history, state.weakSpotQueue);
   const dashboard = getDashboardStats(state);
   const revision = revisionTotals(state);
   const roundItems = revisionRoundItems(state);
-  const weakCards = buildWeakDeck(state.reviewHistory, state.arabicScript);
-  const month = monthConsistency(state.reviewHistory);
+  const weakCards = buildDueWeakDeck(state.weakSpotQueue, state.arabicScript);
+  const scheduledWeak = learningWeakEntries(state).filter((entry) => new Date(entry.nextDueAt).getTime() > Date.now());
+  const month = monthConsistency(history);
 
   return (
     <ScrollView style={styles.fullScreen} contentContainerStyle={styles.withTabsScroll} showsVerticalScrollIndicator={false}>
@@ -1160,9 +1253,9 @@ function ProgressScreen({ state, safeTop, onNav, onStart }: { state: AppState; s
         <Panel>
           <View style={styles.rowBetween}>
             <Text style={styles.sectionTitle}>Weak āyāt to drill</Text>
-            <Text style={styles.greenStrong}>{weakCards.length} marked</Text>
+            <Text style={styles.greenStrong}>{weakCards.length} due{scheduledWeak.length ? ` · ${scheduledWeak.length} later` : ""}</Text>
           </View>
-          {weakCards.length ? (
+          {weakCards.length || scheduledWeak.length ? (
             <View style={styles.weakPillWrap}>
               {weakCards.map((card, index) => (
                 <Pressable
@@ -1171,6 +1264,21 @@ function ProgressScreen({ state, safeTop, onNav, onStart }: { state: AppState; s
                   onPress={() => onStart("weak", index)}
                 >
                   <Text style={styles.weakPillText}>{surahNumberFromLabel(card.surah ?? "")}:{card.num}</Text>
+                </Pressable>
+              ))}
+              {scheduledWeak.map((entry) => (
+                <Pressable
+                  key={`later-${entry.ayahId}`}
+                  style={styles.weakPillLater}
+                  onPress={() =>
+                    Alert.alert(
+                      `Āyah ${entry.surah}:${entry.ayah}`,
+                      `Scheduled for later — it returns to the weak deck ${dueInLabel(entry.nextDueAt)}. Spacing the reviews out is what makes them stick.`
+                    )
+                  }
+                >
+                  <Ionicons name="time-outline" size={12} color={colors.faint} />
+                  <Text style={styles.weakPillLaterText}>{entry.surah}:{entry.ayah} · {dueInLabel(entry.nextDueAt)}</Text>
                 </Pressable>
               ))}
             </View>
@@ -1212,10 +1320,18 @@ function KhatmsScreen({ state, safeTop, onNav, onStart }: { state: AppState; saf
   const curWeakPct = khatm.weakPct;
   const curStrongPct = khatm.strongPct;
   const curRemainPct = khatm.remainPct;
-  const weakDeck = buildWeakDeck(state.reviewHistory, state.arabicScript);
+  const weakDeck = buildDueWeakDeck(state.weakSpotQueue, state.arabicScript);
   const openWeak = (surah: number, ayah: number) => {
     const idx = weakDeck.findIndex((card) => surahNumberFromLabel(card.surah ?? "") === surah && card.num === ayah);
-    if (idx >= 0) onStart("weak", idx);
+    if (idx >= 0) {
+      onStart("weak", idx);
+      return;
+    }
+    // Not in the due deck — either scheduled for later (spaced repetition) or already retired.
+    Alert.alert(
+      `Āyah ${surah}:${ayah}`,
+      "This āyah isn't due for drilling right now — it will come back in the weak deck when its scheduled review arrives."
+    );
   };
   return (
     <ScrollView style={styles.fullScreen} contentContainerStyle={[styles.settingsContent, { paddingTop: safeTop + 8 }]} showsVerticalScrollIndicator={false}>
@@ -1356,7 +1472,8 @@ function BoardScreen({ state, safeTop, onPatch }: { state: AppState; safeTop: nu
 }
 
 function RecapScreen({ state, safeTop, onNav, period }: { state: AppState; safeTop: number; onNav: (screen: Screen) => void; period: "week" | "month" }) {
-  const recap = period === "month" ? getMonthlyRecap(state.reviewHistory, state.khatms) : getWeeklyRecap(state.reviewHistory, state.khatms);
+  const history = allPracticeEvents(state);
+  const recap = period === "month" ? getMonthlyRecap(history, state.khatms) : getWeeklyRecap(history, state.khatms);
   const cardRef = useRef<View>(null);
   const now = new Date();
   const weekStart = new Date(now);
@@ -1446,7 +1563,7 @@ function ProfileScreen({
   onNav: (screen: Screen) => void;
 }) {
   const dashboard = getDashboardStats(state);
-  const history = state.reviewHistory ?? [];
+  const history = allPracticeEvents(state);
   const communityLabel = state.communityMode === "class" ? "Class circle" : state.communityMode === "friends" ? "Friends circle" : "Private mode";
   const selectedReciter = reciterById(state.reciterId);
   const [reciterDropdownOpen, setReciterDropdownOpen] = useState(false);

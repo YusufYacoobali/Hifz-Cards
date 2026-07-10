@@ -1,5 +1,6 @@
 import { DeckContext } from "./deck";
 import { ReminderSettings } from "./native";
+import { allPracticeEvents } from "./progressModel";
 import { AppState, Screen } from "./types";
 
 const tabScreens: Screen[] = ["home", "progress", "board", "profile"];
@@ -12,7 +13,8 @@ export function buildDeckContext(state: AppState): DeckContext {
   return {
     newRange: state.newRange,
     revisionRanges: state.revisionRanges,
-    history: state.reviewHistory,
+    history: allPracticeEvents(state),
+    weakSpotQueue: state.weakSpotQueue,
     arabicScript: state.arabicScript,
     revisionOrder: state.revisionOrder,
     recentSurahLimit: state.recentSurahLimit,

@@ -21,13 +21,33 @@ export const arabicSizeScale: Record<ArabicSize, number> = { small: 0.85, medium
 
 export type ReviewRecord = {
   id: string;
-  mode: SessionMode;
+  // Quiz attempts are recorded too — "quiz" never drives session decks, only progress/weak tracking.
+  mode: SessionMode | "quiz";
   ayahLabel: string;
   result: ResultStatus;
   timestamp: string;
   surah?: number;
   ayah?: number;
   coveredAyahs?: number;
+};
+
+export type DailyPracticeStats = {
+  dateKey: string;
+  securedNewAyahs: string[];
+  revisedAyahs: number;
+  weakMarkedAyahs: string[];
+};
+
+export type WeakSpotQueueEntry = {
+  ayahId: string;
+  surah: number;
+  ayah: number;
+  label: string;
+  weaknessCount: number;
+  solidStreak: number;
+  lastReviewedAt: string;
+  nextDueAt: string;
+  status: "due" | "learning" | "retired";
 };
 
 export type QuizQuestion = {
@@ -112,10 +132,12 @@ export type AppState = {
   revisionCompletedSurahs: Record<string, boolean>;
   revisionRounds: number;
   revisionOrder: RevisionOrder;
-  revisionDoneToday: number;
-  revisionDoneDate: string;
   celebratedDailyGoalKeys: string[];
   khatms: KhatmRecord[];
+  newProgressBySurah: Record<string, number>;
+  dailyStatsByDate: Record<string, DailyPracticeStats>;
+  weakSpotQueue: Record<string, WeakSpotQueueEntry>;
+  practiceEvents: ReviewRecord[];
   recentSurahLimit: number;
   recentSelectedSurahs: number[];
   quizQuestionCount: number;
@@ -206,10 +228,12 @@ export const initialState: AppState = {
   revisionCompletedSurahs: {},
   revisionRounds: 0,
   revisionOrder: "forward",
-  revisionDoneToday: 0,
-  revisionDoneDate: "",
   celebratedDailyGoalKeys: [],
   khatms: [],
+  newProgressBySurah: { "67": 1 },
+  dailyStatsByDate: {},
+  weakSpotQueue: {},
+  practiceEvents: [],
   recentSurahLimit: 3,
   recentSelectedSurahs: [],
   quizQuestionCount: 5,
