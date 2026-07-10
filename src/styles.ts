@@ -1321,6 +1321,28 @@ export const styles = StyleSheet.create({
     right: 0,
     opacity: 0.75
   },
+  swipePreviewCard: {
+    position: "absolute",
+    top: Platform.OS === "android" ? 8 : 10,
+    bottom: Platform.OS === "android" ? 8 : 10,
+    left: 0,
+    right: 0,
+    backgroundColor: "#fffdf8",
+    borderRadius: Platform.OS === "android" ? 24 : 30,
+    padding: Platform.OS === "android" ? 18 : 24,
+    alignItems: "center",
+    overflow: "hidden",
+    opacity: 0.88,
+    borderWidth: 1,
+    borderColor: colors.line,
+    ...shadow
+  },
+  swipePreviewCardNext: {
+    transform: [{ translateX: Platform.OS === "android" ? 14 : 18 }, { scale: 0.97 }]
+  },
+  swipePreviewCardPrev: {
+    transform: [{ translateX: Platform.OS === "android" ? -14 : -18 }, { scale: 0.97 }]
+  },
   practiceCard: {
     position: "absolute",
     top: 0,

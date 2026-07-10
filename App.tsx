@@ -861,6 +861,7 @@ function SessionScreen({
   const total = deck.length;
   const progress = sessionProgressWidth(state.cardIndex, total);
   const translateX = useRef(new Animated.Value(0)).current;
+  const [dragDirection, setDragDirection] = useState<1 | -1 | 0>(0);
   const isRev = !!item && isRevisionFlow(item);
   const isRecent = state.sessionMode === "recent";
   const isWeakReview = state.sessionMode === "weak" || state.sessionMode === "yesterdayWeak";
@@ -869,6 +870,13 @@ function SessionScreen({
   const readCard = reading && isRev ? ayahCard(item.surah ?? 0, state.revisionReadAyah, state.arabicScript) : null;
   const currentSurahNumber = isRev ? item.surah ?? 0 : surahNumberFromLabel(item?.surah ?? "67");
   const currentAyahNumber = reading ? state.revisionReadAyah : isRev ? item.start : item?.num ?? 1;
+  const adjacentSwipeItem = !isRev && dragDirection !== 0 ? deck[state.cardIndex + dragDirection] : undefined;
+  const adjacentSwipeCard = adjacentSwipeItem && !isRevisionFlow(adjacentSwipeItem) ? adjacentSwipeItem : undefined;
+  const previousContextCard =
+    !isRev && dragDirection < 0 && state.cardIndex === 0 && currentSurahNumber && currentAyahNumber > 1
+      ? ayahCard(currentSurahNumber, currentAyahNumber - 1, state.arabicScript)
+      : undefined;
+  const swipePreviewCard = adjacentSwipeCard ?? previousContextCard;
   const readAlreadyWeak = reading && !!state.results[`${currentSurahNumber}:${state.revisionReadAyah}`];
   const revisionEndAyah = isRev ? item.passage[item.passage.length - 1]?.num ?? item.start : 1;
   const revisionStartAyah = isRev ? Math.min(revisionEndAyah, Math.max(item.start, state.revisionResumeAyah || item.start)) : 1;
@@ -944,6 +952,7 @@ function SessionScreen({
 
   useEffect(() => {
     translateX.setValue(0);
+    setDragDirection(0);
   }, [state.cardIndex, translateX]);
 
   // Swipe navigates memorisation/weak cards; in revision read mode it moves between nearby ayahs.
@@ -952,7 +961,11 @@ function SessionScreen({
       PanResponder.create({
         onStartShouldSetPanResponder: () => false,
         onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 14 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
-        onPanResponderMove: (_, gesture) => translateX.setValue(gesture.dx),
+        onPanResponderMove: (_, gesture) => {
+          translateX.setValue(gesture.dx);
+          const nextDirection = gesture.dx > 12 ? 1 : gesture.dx < -12 ? -1 : 0;
+          setDragDirection((current) => (current === nextDirection ? current : nextDirection));
+        },
         onPanResponderRelease: (_, gesture) => {
           if ((!isRev || reading) && Math.abs(gesture.dx) > 120) {
             const direction = gesture.dx > 0 ? 1 : -1;
@@ -969,10 +982,12 @@ function SessionScreen({
               duration: 220,
               useNativeDriver: true
             }).start(() => {
+              setDragDirection(0);
               if (reading) translateX.setValue(0);
               else navigateMemoriseCard(direction);
             });
           } else {
+            setDragDirection(0);
             Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
           }
         }
@@ -1092,6 +1107,17 @@ function SessionScreen({
       <View style={[styles.cardStack, !isRev && styles.memoriseCardStack, { top: cardTop, bottom: cardBottom }]}>
         <View style={[styles.behindCard, styles.behindCardOne]} />
         <View style={[styles.behindCard, styles.behindCardTwo]} />
+        {!!swipePreviewCard && (
+          <View
+            pointerEvents="none"
+            style={[
+              styles.swipePreviewCard,
+              dragDirection < 0 ? styles.swipePreviewCardPrev : styles.swipePreviewCardNext
+            ]}
+          >
+            <AyahCard card={swipePreviewCard} arScale={arScale * 0.95} hideMeta />
+          </View>
+        )}
         <Animated.View
           {...responder.panHandlers}
           style={[
