@@ -1190,6 +1190,10 @@ export const styles = StyleSheet.create({
     gap: 8,
     marginTop: 12
   },
+  recentStartTopButton: {
+    marginTop: 12,
+    marginBottom: 4
+  },
   revisionPickRow: {
     flexDirection: "row",
     alignItems: "center",

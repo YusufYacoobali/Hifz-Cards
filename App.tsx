@@ -445,6 +445,7 @@ function ModeScreen({
     const selected = new Set(state.recentSelectedSurahs ?? []);
     const knownCount = Math.max(1, revisionDeck.length);
     const countOptions = Array.from(new Set([1, 2, 3, 5, 10, knownCount].filter((value) => value <= knownCount)));
+    const solidifierStartLabel = `Start ${recentCount || Math.min(state.recentSurahLimit || 3, revisionDeck.length)} surah solidifier`;
     return (
       <ScrollView style={styles.fullScreen} contentContainerStyle={[styles.settingsContent, { paddingTop: safeTop + 8, paddingBottom: Math.max(110, safeBottom + 96) }]} showsVerticalScrollIndicator={false}>
         <Header title="Pick recent surahs" onBack={() => setRecentDetailOpen(false)} />
@@ -478,6 +479,7 @@ function ModeScreen({
             <Text style={styles.sectionTitle}>Choose surahs</Text>
             <Text style={styles.greenStrong}>{revisionDeck.length} known</Text>
           </View>
+          <PrimaryButton label={solidifierStartLabel} icon="arrow-forward" onPress={startRecent} style={styles.recentStartTopButton} />
           <View style={styles.revisionPickList}>
             {revisionDeck.map((entry) => {
               const surah = entry.surah ?? 0;
@@ -495,7 +497,7 @@ function ModeScreen({
             })}
           </View>
         </Panel>
-        <PrimaryButton label={`Start ${recentCount || Math.min(state.recentSurahLimit || 3, revisionDeck.length)} surah solidifier`} icon="arrow-forward" onPress={startRecent} />
+        <PrimaryButton label={solidifierStartLabel} icon="arrow-forward" onPress={startRecent} />
       </ScrollView>
     );
   }
